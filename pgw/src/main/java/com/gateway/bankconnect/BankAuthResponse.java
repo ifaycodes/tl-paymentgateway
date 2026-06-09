@@ -1,17 +1,26 @@
 package com.gateway.bankconnect;
 
-import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-import com.gateway.state.State;
-
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class BankAuthResponse {
 
     private int amount;
-    private String authorizationId;
-    private LocalDateTime createdAt;
+    
     private String currency;
-    private LocalDateTime expiresAt;
-    private State currentState;
+
+    @JsonProperty("authorization_id")
+    private String authorizationId;
+
+    @JsonProperty("created_at")
+    private String createdAt;
+
+    @JsonProperty("expires_at")
+    private String expiresAt;
+
+    @JsonProperty("status")
+    private String currentState;
 
     public int getAmount() {
         return amount;
@@ -27,10 +36,10 @@ public class BankAuthResponse {
         this.authorizationId = authorizationId;
     }
 
-    public LocalDateTime getCreatedAt() {
+    public String getCreatedAt() {
         return createdAt;
     }
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
     }
 
@@ -41,17 +50,17 @@ public class BankAuthResponse {
         this.currency = currency;
     }
 
-    public LocalDateTime getExpiresAt() {
+    public String getExpiresAt() {
         return expiresAt;
     }
-    public void setExpiresAt(LocalDateTime expiresAt) {
+    public void setExpiresAt(String expiresAt) {
         this.expiresAt = expiresAt;
     }
 
-    public State getCurrentState() {
+    public String getCurrentState() {
         return currentState;
     }
-    public void setCurrentState(State currentState) {
+    public void setCurrentState(String currentState) {
         this.currentState = currentState;
     }
 }

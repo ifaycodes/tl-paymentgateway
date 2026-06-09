@@ -1,15 +1,14 @@
 package com.gateway.bankconnect;
 
-import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-import com.gateway.state.State;
-
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class BankVoidResponse {
 
     private String authorizationId;
-    private State currentState;
+    private String currentState;
     private String voidId;
-    private LocalDateTime voidedAt;
+    private String voidedAt;
 
     
     public String getAuthorizationId() {
@@ -18,10 +17,10 @@ public class BankVoidResponse {
     public void setAuthorizationId(String authorizationId) {
         this.authorizationId = authorizationId;
     }
-    public State getCurrentState() {
+    public String getCurrentState() {
         return currentState;
     }
-    public void setCurrentState(State currentState) {
+    public void setCurrentState(String currentState) {
         this.currentState = currentState;
     }
     public String getVoidId() {
@@ -30,10 +29,10 @@ public class BankVoidResponse {
     public void setVoidId(String voidId) {
         this.voidId = voidId;
     }
-    public LocalDateTime getVoidedAt() {
+    public String getVoidedAt() {
         return voidedAt;
     }
-    public void setVoidedAt(LocalDateTime voidedAt) {
+    public void setVoidedAt(String voidedAt) {
         this.voidedAt = voidedAt;
     }
 

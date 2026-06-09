@@ -4,14 +4,15 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
 import java.util.HexFormat;
 
 import javax.sql.DataSource;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.gateway.bankconnect.BankAuthResponse;
@@ -28,36 +29,57 @@ import com.gateway.state.StateMachine;
 @RestController
 @RequestMapping("/api/v1")
 public class GatewayApis {
-    private final DataSource dataSource = null;
+
     StateMachine stateMachine = new StateMachine();
-    BankClient bankClient = new BankClient();
-    PaymentRepository paymentRepository = new PaymentRepository(dataSource);
+
+    @Autowired
+    private BankClient bankClient;
+
+    @Autowired
+    private PaymentRepository paymentRepository;
+
     OrderDetail orderDetail = new OrderDetail();
 
-    @PostMapping()
-    public String authorize(int amount, String orderId, String customerId, CardDetail cardDetail) throws Exception {
-        
+    public GatewayApis(DataSource dataSource, PaymentRepository paymentRepository, BankClient bankClient) {
+        this.paymentRepository = paymentRepository;
+        this.bankClient = bankClient;
+    }
+
+    @PostMapping("/authorize")
+    public String authorize(@RequestParam int amount, @RequestParam String orderId, @RequestParam String customerId, @RequestParam String cardNumber, @RequestParam String cvv, @RequestParam int expiryMonth, @RequestParam int expiryYear) throws Exception {
+        CardDetail cardDetail = new CardDetail();
+        cardDetail.setCardNumber(cardNumber);
+        cardDetail.setCvv(cvv);
+        cardDetail.setExpiryMonth(expiryMonth);
+        cardDetail.setExpiryYear(expiryYear);
+
         BankAuthResponse bankResponse = bankClient.authorization(cardDetail, amount);
 
-        String authorizationId = bankResponse.getAuthorizationId();
+        String authorization_id = bankResponse.getAuthorizationId();
 
-        String paymentRef = generatePaymentRef(authorizationId, orderId, customerId);
+        String paymentRef = generatePaymentRef(authorization_id, orderId, customerId);
 
         orderDetail.setPaymentRef(paymentRef);
-        orderDetail.setAuthorizationId(authorizationId);
+        orderDetail.setAuthorizationId(authorization_id);
         orderDetail.setAmount(amount);
         orderDetail.setCustomerId(customerId);
         orderDetail.setOrderId(orderId);
-        orderDetail.setCurrentState(State.AUTHORIZED);
-        orderDetail.setCreatedAt(LocalDateTime.now());
+        orderDetail.setCurrentState(State.APPROVED);
+        orderDetail.setCreatedAt(bankResponse.getCreatedAt());
         
         paymentRepository.save(orderDetail);
         return paymentRef;
     }
 
-    @PostMapping()
-    public String capture(String paymentRef) throws Exception {
-        BankCaptureResponse captureResponse = bankClient.capture(paymentRef);
+    @PostMapping("/capture")
+    public String capture(@RequestParam String paymentRef) throws Exception {
+
+        String authorizationId = paymentRepository.findByPaymentRef(paymentRef).getAuthorizationId();
+        int amount = paymentRepository.findByPaymentRef(paymentRef).getAmount();
+
+        //System.out.print(authorizationId + " " + amount);
+
+        BankCaptureResponse captureResponse = bankClient.capture(amount, authorizationId);
         String captureId = captureResponse.getCaptureId();
 
         paymentRepository.updateStatus(paymentRef, State.CAPTURED);
@@ -66,9 +88,11 @@ public class GatewayApis {
         return confirmation;
     }
 
-    @PostMapping
-    public String voids(String paymentRef) throws Exception {
-        BankVoidResponse voidResponse = bankClient.voidOrder(paymentRef);
+    @PostMapping("/void")
+    public String voids(@RequestParam String paymentRef) throws Exception {
+        String authorizationId = paymentRepository.findByPaymentRef(paymentRef).getAuthorizationId();
+
+        BankVoidResponse voidResponse = bankClient.voidOrder(authorizationId);
         String voidId = voidResponse.getVoidId();
 
         paymentRepository.updateStatus(paymentRef, State.VOIDED);
@@ -78,11 +102,12 @@ public class GatewayApis {
         
     }
 
-    @PostMapping
-    public String refund(String paymentRef) throws Exception {
+    @PostMapping("/refund")
+    public String refund(@RequestParam String paymentRef) throws Exception {
         String captureId = paymentRepository.findByPaymentRef(paymentRef).getCaptureId();
+        int amount = paymentRepository.findByPaymentRef(paymentRef).getAmount();
 
-        BankRefundResponse refundResponse = bankClient.refund(captureId);
+        BankRefundResponse refundResponse = bankClient.refund(amount, captureId);
         String refundId = refundResponse.getRefundId();
 
         paymentRepository.updateStatus(paymentRef, State.REFUNDED);
@@ -92,26 +117,26 @@ public class GatewayApis {
         
     }
 
-    @GetMapping
+    @GetMapping("/orders")
     public OrderDetail getOrdersByCustomerId(String customerId) throws SQLException {
         return paymentRepository.findByCustomerId(customerId);
     }
 
-    @GetMapping
+    @GetMapping("/status")
     public State getOrderStatus(String orderId) throws SQLException {
         return paymentRepository.findByOrderId(orderId);
     }
 
 
     // method to generate a payment key using hash
-    public String generatePaymentRef(String authorizationId, String orderId, String customerId) throws NoSuchAlgorithmException {
-    String raw = authorizationId + orderId + customerId;
+    public String generatePaymentRef(String authorization_id, String orderId, String customerId) throws NoSuchAlgorithmException {
+    String raw = authorization_id + orderId + customerId;
     
     MessageDigest digest = MessageDigest.getInstance("SHA-256");
     byte[] hash = digest.digest(raw.getBytes(StandardCharsets.UTF_8));
     
     // we take first 16 chars to keep it short
     return "pay_" + HexFormat.of().formatHex(hash).substring(0, 16);
-}
+    }
 
 }

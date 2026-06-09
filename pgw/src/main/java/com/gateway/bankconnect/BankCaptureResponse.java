@@ -1,16 +1,26 @@
 package com.gateway.bankconnect;
 
-import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-import com.gateway.state.State;
-
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class BankCaptureResponse {
     private int amount;
+
+    @JsonProperty("auntorization_id")
     private String authorizationId;
+
+    @JsonProperty("capture_id")
     private String captureId;
-    private LocalDateTime capturedAt;
+
+    @JsonProperty("captured_at")
+    private String capturedAt;
+
     private String currency;
-    private State currentState;
+
+    @JsonProperty("status")
+    private String 
+    currentState;
 
     
     public int getAmount() {
@@ -31,10 +41,10 @@ public class BankCaptureResponse {
     public void setCaptureId(String captureId) {
         this.captureId = captureId;
     }
-    public LocalDateTime getCapturedAt() {
+    public String getCapturedAt() {
         return capturedAt;
     }
-    public void setCapturedAt(LocalDateTime capturedAt) {
+    public void setCapturedAt(String capturedAt) {
         this.capturedAt = capturedAt;
     }
     public String getCurrency() {
@@ -43,10 +53,12 @@ public class BankCaptureResponse {
     public void setCurrency(String currency) {
         this.currency = currency;
     }
-    public State getCurrentState() {
+    public String 
+    getCurrentState() {
         return currentState;
     }
-    public void setCurrentState(State currentState) {
+    public void setCurrentState(String 
+        currentState) {
         this.currentState = currentState;
     }
 }

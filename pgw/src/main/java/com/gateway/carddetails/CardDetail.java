@@ -1,12 +1,24 @@
 package com.gateway.carddetails;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class CardDetail {
+    @JsonProperty("card_number")
     private String cardNumber;
-    private String cvv;
+    
+    @JsonProperty("expiry_month")
     private int expiryMonth;
-    private int expiryYear; 
+    
+    @JsonProperty("expiry_year")
+    private int expiryYear;
+    
+    @JsonProperty("cvv")
+    private String cvv;
 
 
+    public CardDetail() {
+    }
+    
     public String getCardNumber() {
         return cardNumber;
     }

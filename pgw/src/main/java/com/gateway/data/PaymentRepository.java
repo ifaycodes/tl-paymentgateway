@@ -39,7 +39,7 @@ public class PaymentRepository {
                     statement.setString(4, orderDetail.getCustomerId());
                     statement.setInt(5, orderDetail.getAmount());
                     statement.setString(6, orderDetail.getCurrentState().toString());
-                    statement.setTimestamp(7, Timestamp.valueOf(orderDetail.getCreatedAt()));
+                    statement.setString(7, orderDetail.getCreatedAt());
 
                     statement.executeUpdate();
                 }
@@ -49,7 +49,7 @@ public class PaymentRepository {
 
     // to find an order in the database using the paymentRef
     public OrderDetail findByPaymentRef(String paymentRef) throws SQLException {
-        String sql = "SELECT * FROM payments paymentRef = ?";
+        String sql = "SELECT * FROM payments WHERE paymentRef = ?";
 
         try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -67,10 +67,10 @@ public class PaymentRepository {
                 order.setCaptureId(result.getString("captureId"));
                 order.setRefundId(result.getString("refundId"));
                 order.setVoidId(result.getString("voidId"));
-                order.setCreatedAt(LocalDateTime.parse(result.getString("createdAt")));
-                order.setVoidedAt(LocalDateTime.parse(result.getString("voidedAt")));
-                order.setCapturedAt(LocalDateTime.parse(result.getString("capturedAt")));
-                order.setRefundedAt(LocalDateTime.parse(result.getString("refundedAt")));
+                order.setCreatedAt(result.getString("createdAt"));
+                order.setVoidedAt(result.getString("voidedAt"));
+                order.setCapturedAt(result.getString("capturedAt"));
+                order.setRefundedAt(result.getString("refundedAt"));
                 return order;
             }
 
@@ -116,40 +116,40 @@ public class PaymentRepository {
         }
     }
     
-    public void updateCapture(String paymentRef, String captureId, LocalDateTime capturedAt) throws SQLException {
+    public void updateCapture(String paymentRef, String captureId, String capturedAt) throws SQLException {
         String sql = "UPDATE payments SET captureId = ?, capturedAt = ? WHERE paymentRef = ?";
 
         try (Connection connection = dataSource.getConnection();
             PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, captureId);
-                statement.setTimestamp(2, Timestamp.valueOf(capturedAt));
+                statement.setString(2, capturedAt);
                 statement.setString(3, paymentRef);
 
                 statement.executeUpdate();
             }
     }
 
-    public void updateVoid(String paymentRef, String voidId, LocalDateTime voidedAt) throws SQLException {
+    public void updateVoid(String paymentRef, String voidId, String voidedAt) throws SQLException {
         String sql = "UPDATE payments SET voidId = ?, voidedAt = ? WHERE paymentRef = ?";
 
         try (Connection connection = dataSource.getConnection();
             PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, voidId);
                 statement.setString(3, paymentRef);
-                statement.setTimestamp(2, Timestamp.valueOf(voidedAt));
+                statement.setString(2, voidedAt);
 
                 statement.executeUpdate();
             }
     }
 
-    public void updateRefund(String paymentRef, String refundId, LocalDateTime refundedAt) throws SQLException {
+    public void updateRefund(String paymentRef, String refundId, String refundedAt) throws SQLException {
         String sql = "UPDATE payments SET refundId = ?, refundedAt = ? WHERE paymentRef = ?";
 
         try (Connection connection = dataSource.getConnection();
             PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, refundId);
                 statement.setString(3, paymentRef);
-                statement.setTimestamp(2, Timestamp.valueOf(refundedAt));
+                statement.setString(2, refundedAt);
 
                 statement.executeUpdate();
             }

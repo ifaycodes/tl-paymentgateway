@@ -26,8 +26,8 @@ public class BankClient {
                     "amount": %d,
                     "card_number": "%s",
                     "cvv": "%s",
-                    "expiry_month": "%s",
-                    "expiry_year": "%s"
+                    "expiry_month": %d,
+                    "expiry_year": %d
                 }
                 """.formatted(amount, cardDetail.getCardNumber(), 
                               cardDetail.getCvv(), cardDetail.getExpiryMonth(), cardDetail.getExpiryYear());
@@ -40,8 +40,13 @@ public class BankClient {
                 .header("Idempotency-Key", UUID.randomUUID().toString()) // the idempptency key parameter
                 .build();
 
+        System.out.println("Sending to bank: " + requestBody);
+
         HttpResponse<String> response = httpClient.send(request, 
                 HttpResponse.BodyHandlers.ofString());
+
+        
+        System.out.println("Bank response: " + response.body());
 
         // Parse and return the bank's response
         ObjectMapper mapper = new ObjectMapper();
@@ -49,11 +54,9 @@ public class BankClient {
         System.out.println(bankResponse);
         return bankResponse;
 
-        //authorizationId = bankResponse.getAuthorizationId();
     }
 
-    public BankCaptureResponse capture(String authorizationId) throws Exception {
-        BankAuthResponse bankResponse = new BankAuthResponse();
+    public BankCaptureResponse capture(int amount, String authorizationId) throws Exception {
 
         // http request body
         String requestBody = """
@@ -61,7 +64,7 @@ public class BankClient {
                     "amount": %d,
                     "authorization_id": "%s"
                 }
-                """.formatted(bankResponse.getAmount(), bankResponse.getAuthorizationId());
+                """.formatted(amount, authorizationId);
 
         // building the HTTP request
         HttpRequest request = HttpRequest.newBuilder()
@@ -71,8 +74,12 @@ public class BankClient {
                 .header("Idempotency-Key", UUID.randomUUID().toString()) // the idempptency key parameter
                 .build();
 
+        System.out.println("Sending to bank: " + requestBody);
+
         HttpResponse<String> response = httpClient.send(request, 
                 HttpResponse.BodyHandlers.ofString());
+
+        System.out.println("Bank response: " + response.body());
 
         // Parse and return the bank's response
         ObjectMapper mapper = new ObjectMapper();
@@ -88,7 +95,7 @@ public class BankClient {
                 {
                     "authorization_id": "%s"
                 }
-                """.formatted(new BankAuthResponse().getAuthorizationId());
+                """.formatted(authorizationId);
 
         // building the HTTP request
         HttpRequest request = HttpRequest.newBuilder()
@@ -108,8 +115,7 @@ public class BankClient {
         return voidResponse;
      }
 
-    public BankRefundResponse refund(String captureId) throws Exception {
-        BankCaptureResponse captureResponse = new BankCaptureResponse();
+    public BankRefundResponse refund(int amount, String captureId) throws Exception {
 
         // http request body
         String requestBody = """
@@ -117,7 +123,7 @@ public class BankClient {
                     "amount": %d,
                     "capture_id": "%s"
                 }
-                """.formatted(captureResponse.getAmount(), captureResponse.getCaptureId());
+                """.formatted(amount, captureId);
 
         // building the HTTP request
         HttpRequest request = HttpRequest.newBuilder()

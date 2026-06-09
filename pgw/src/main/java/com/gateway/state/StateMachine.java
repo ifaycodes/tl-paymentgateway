@@ -17,11 +17,11 @@ public class StateMachine {
 
     private void initializeTransitions() {
         transitions.put(State.PENDING, new EnumMap<>(Event.class));
-        transitions.get(State.PENDING).put(Event.RESERVE_FUNDS, State.AUTHORIZED);
+        transitions.get(State.PENDING).put(Event.RESERVE_FUNDS, State.APPROVED);
 
-        transitions.put(State.AUTHORIZED, new EnumMap<>(Event.class));
-        transitions.get(State.AUTHORIZED).put(Event.WITHDRAW_FUNDS, State.CAPTURED);
-        transitions.get(State.AUTHORIZED).put(Event.CANCEL_TRANSACTION, State.VOIDED);
+        transitions.put(State.APPROVED, new EnumMap<>(Event.class));
+        transitions.get(State.APPROVED).put(Event.WITHDRAW_FUNDS, State.CAPTURED);
+        transitions.get(State.APPROVED).put(Event.CANCEL_TRANSACTION, State.VOIDED);
 
         transitions.put(State.CAPTURED, new EnumMap<>(Event.class));
         transitions.get(State.CAPTURED).put(Event.CANCEL_ORDER, State.REFUNDED);

@@ -1,9 +1,9 @@
 package com.gateway.models;
 
-import java.time.LocalDateTime;
-
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.gateway.state.State;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class OrderDetail {
 
     private String orderId;
@@ -16,10 +16,10 @@ public class OrderDetail {
     private String captureId;
     private String voidId;
     private String refundId;
-    private LocalDateTime createdAt;
-    private LocalDateTime capturedAt;
-    private LocalDateTime voidedAt;
-    private LocalDateTime refundedAt;
+    private String createdAt;
+    private String capturedAt;
+    private String voidedAt;
+    private String refundedAt;
 
 
     //getters and setters
@@ -80,28 +80,28 @@ public class OrderDetail {
     public void setRefundId(String refundId) {
         this.refundId = refundId;
     }
-    public LocalDateTime getCreatedAt() {
+    public String getCreatedAt() {
         return createdAt;
     }
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
     }
-    public LocalDateTime getCapturedAt() {
+    public String getCapturedAt() {
         return capturedAt;
     }
-    public void setCapturedAt(LocalDateTime capturedAt) {
+    public void setCapturedAt(String capturedAt) {
         this.capturedAt = capturedAt;
     }
-    public LocalDateTime getVoidedAt() {
+    public String getVoidedAt() {
         return voidedAt;
     }
-    public void setVoidedAt(LocalDateTime voidedAt) {
+    public void setVoidedAt(String voidedAt) {
         this.voidedAt = voidedAt;
     }
-    public LocalDateTime getRefundedAt() {
+    public String getRefundedAt() {
         return refundedAt;
     }
-    public void setRefundedAt(LocalDateTime refundedAt) {
+    public void setRefundedAt(String refundedAt) {
         this.refundedAt = refundedAt;
     }
 

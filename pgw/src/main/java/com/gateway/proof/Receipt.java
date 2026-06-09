@@ -3,7 +3,8 @@ package com.gateway.proof;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 
-import javax.sql.DataSource;
+
+import org.springframework.beans.factory.annotation.Autowired;
 
 import com.gateway.data.PaymentRepository;
 import com.gateway.models.OrderDetail;
@@ -19,8 +20,8 @@ public class Receipt {
     public int bankRefId;
     public LocalDateTime timeStamp;
 
-    private final DataSource dataSource = null;
-    PaymentRepository paymentRepository = new PaymentRepository(dataSource);
+    @Autowired
+    PaymentRepository paymentRepository;
     
 
     //constructor

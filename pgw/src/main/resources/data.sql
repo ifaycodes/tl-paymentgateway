@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS payments (
     orderId        VARCHAR,
     customerId     VARCHAR,
     amount          INTEGER,
-    cuurentState    VARCHAR,    -- AUTHORIZED, CAPTURED, VOIDED, REFUNDED
+    currentState    VARCHAR,    -- AUTHORIZED, CAPTURED, VOIDED, REFUNDED
     createdAt      TIMESTAMP,
     capturedAt      TIMESTAMP,
     voidedAt        TIMESTAMP,
