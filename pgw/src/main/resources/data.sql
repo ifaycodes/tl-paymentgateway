@@ -13,3 +13,9 @@ CREATE TABLE IF NOT EXISTS payments (
     voidedAt        TIMESTAMP,
     refundedAt      TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS receipts (
+    receiptId       VARCHAR PRIMARY KEY,
+    paymentRef      VARCHAR,
+    dateCreated     TIMESTAMP
+);

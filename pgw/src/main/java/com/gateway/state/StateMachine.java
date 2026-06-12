@@ -3,9 +3,21 @@ package com.gateway.state;
 import java.util.EnumMap;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
 import com.gateway.proof.Receipt;
 
+
+
 public class StateMachine {
+
+    @Autowired
+    private Receipt receipt;
+
+    public StateMachine (Receipt receipt) {
+        this.receipt = receipt;
+    }
+
     private State currentState;
     private Map<State, Map<Event, State>> transitions;
 
@@ -35,7 +47,6 @@ public class StateMachine {
     }
 
     public void processEvent(Event event) {
-        Receipt receipt = new Receipt();
         Map<Event, State> stateTransitions = transitions.get(currentState);
         if (stateTransitions != null && stateTransitions.containsKey(event)) {
             currentState = stateTransitions.get(event);

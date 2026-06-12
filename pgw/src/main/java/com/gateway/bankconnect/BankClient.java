@@ -108,11 +108,14 @@ public class BankClient {
         HttpResponse<String> response = httpClient.send(request, 
                 HttpResponse.BodyHandlers.ofString());
 
+        System.out.println(response);
+
         // Parse and return the bank's response
         ObjectMapper mapper = new ObjectMapper();
         BankVoidResponse voidResponse = mapper.readValue(response.body(), BankVoidResponse.class);
         System.out.println(voidResponse);
         return voidResponse;
+        
      }
 
     public BankRefundResponse refund(int amount, String captureId) throws Exception {

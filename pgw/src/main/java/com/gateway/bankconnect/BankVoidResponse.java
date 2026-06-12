@@ -1,13 +1,21 @@
 package com.gateway.bankconnect;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BankVoidResponse {
 
+    @JsonProperty("authorization_id")
     private String authorizationId;
+
+    @JsonProperty("status")
     private String currentState;
+
+    @JsonProperty("void_id")
     private String voidId;
+
+    @JsonProperty("voided_at")
     private String voidedAt;
 
     

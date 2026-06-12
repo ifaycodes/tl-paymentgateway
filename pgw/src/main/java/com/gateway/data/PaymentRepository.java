@@ -1,7 +1,5 @@
 package com.gateway.data;
 
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -79,7 +77,7 @@ public class PaymentRepository {
     }
 
     public OrderDetail findByCustomerId(String customerId) throws SQLException {
-        String sql = "SELECT * FROM payments customerId = ?";
+        String sql = "SELECT * FROM payments WHERE customerId = ?";
 
         try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -101,19 +99,22 @@ public class PaymentRepository {
     }
 
     public State findByOrderId(String orderId) throws SQLException {
-        String sql = "SELECT * FROM payments orderId = ?";
+        String sql = "SELECT * FROM payments WHERE orderId = ?";
 
         try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(sql)) {
         statement.setString(1, orderId);
         ResultSet result = statement.executeQuery();
 
-        OrderDetail order = new OrderDetail();
-        order.setCurrentState(State.valueOf(result.getString("currentState")));
+        if (result.next()) {
+            OrderDetail order = new OrderDetail();
+            order.setCurrentState(State.valueOf(result.getString("currentState")));
 
-        State orderStatus = order.getCurrentState();
-        return orderStatus;
+            State orderStatus = order.getCurrentState();
+            return orderStatus;
         }
+        return null;
+    }
     }
     
     public void updateCapture(String paymentRef, String captureId, String capturedAt) throws SQLException {

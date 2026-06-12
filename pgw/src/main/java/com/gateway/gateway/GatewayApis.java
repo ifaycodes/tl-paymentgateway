@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.HexFormat;
 
 import javax.sql.DataSource;
@@ -22,7 +23,10 @@ import com.gateway.bankconnect.BankRefundResponse;
 import com.gateway.bankconnect.BankVoidResponse;
 import com.gateway.carddetails.CardDetail;
 import com.gateway.data.PaymentRepository;
+import com.gateway.data.ReceiptRepository;
 import com.gateway.models.OrderDetail;
+import com.gateway.models.ReceiptDetails;
+import com.gateway.proof.Receipt;
 import com.gateway.state.State;
 import com.gateway.state.StateMachine;
 
@@ -33,16 +37,24 @@ public class GatewayApis {
     StateMachine stateMachine = new StateMachine();
 
     @Autowired
+    private Receipt receipt;
+
+    @Autowired
     private BankClient bankClient;
 
     @Autowired
     private PaymentRepository paymentRepository;
 
+    @Autowired
+    private ReceiptRepository receiptRepository;
+
     OrderDetail orderDetail = new OrderDetail();
 
-    public GatewayApis(DataSource dataSource, PaymentRepository paymentRepository, BankClient bankClient) {
+    public GatewayApis(DataSource dataSource, PaymentRepository paymentRepository, BankClient bankClient, ReceiptRepository receiptRepository, Receipt receipt) {
         this.paymentRepository = paymentRepository;
         this.bankClient = bankClient;
+        this.receiptRepository = receiptRepository;
+        this.receipt = receipt;
     }
 
     @PostMapping("/authorize")
@@ -68,7 +80,9 @@ public class GatewayApis {
         orderDetail.setCreatedAt(bankResponse.getCreatedAt());
         
         paymentRepository.save(orderDetail);
-        return paymentRef;
+        String confirmation = "This order has been approved. Authorization ID: " + authorization_id + ".\n Payment Ref: " + paymentRef;
+        return confirmation;
+        
     }
 
     @PostMapping("/capture")
@@ -84,7 +98,7 @@ public class GatewayApis {
 
         paymentRepository.updateStatus(paymentRef, State.CAPTURED);
         paymentRepository.updateCapture(paymentRef, captureId, captureResponse.getCapturedAt());
-        String confirmation = "This order has been captured. Capture ID: " + captureId;
+        String confirmation = "This order has been captured. Capture ID: " + captureId + ".\n Product will be shipped soon!";
         return confirmation;
     }
 
@@ -97,7 +111,7 @@ public class GatewayApis {
 
         paymentRepository.updateStatus(paymentRef, State.VOIDED);
         paymentRepository.updateVoid(paymentRef, voidId, voidResponse.getVoidedAt());
-        String confirmation = "This order has been voided. Capture ID: " + voidId;
+        String confirmation = "This order has been voided. Void ID: " + voidId + "\n Product will not be shipped";
         return confirmation;
         
     }
@@ -112,19 +126,44 @@ public class GatewayApis {
 
         paymentRepository.updateStatus(paymentRef, State.REFUNDED);
         paymentRepository.updateRefund(paymentRef, refundId, refundResponse.getRefundedAt());
-        String confirmation = "This order has been voided. Refund ID: " + refundId;
+        String confirmation = "This order has been refunded. Refund ID: " + refundId + ".\n Amount: " + amount;
         return confirmation;
         
     }
 
+    @PostMapping("/receipts")
+    public String receipts(@RequestParam String orderId, @RequestParam String customerId, @RequestParam String amount) throws SQLException {
+        String orderReceipt = receipt.createReceipt(orderId, customerId, amount);
+
+        String paymentRef = paymentRepository.findByCustomerId(customerId).getPaymentRef();
+
+        if (!receiptRepository.getReceiptByRef(paymentRef)) {
+
+            LocalDateTime dateCreated = LocalDateTime.now();
+
+            int lastReceiptId = receiptRepository.findLastReceiptId();
+            int receiptId = lastReceiptId + 1;
+
+            receiptRepository.save(receiptId, paymentRef, dateCreated);
+            
+        }
+
+        return orderReceipt;
+    }
+
     @GetMapping("/orders")
-    public OrderDetail getOrdersByCustomerId(String customerId) throws SQLException {
+    public OrderDetail getOrdersByCustomerId(@RequestParam String customerId) throws SQLException {
         return paymentRepository.findByCustomerId(customerId);
     }
 
     @GetMapping("/status")
-    public State getOrderStatus(String orderId) throws SQLException {
+    public State getOrderStatus(@RequestParam String orderId) throws SQLException {
         return paymentRepository.findByOrderId(orderId);
+    }
+
+    @GetMapping("/getReceipt")
+    public ReceiptDetails getReceiptDetails(@RequestParam int receiptId) throws SQLException {
+        return receiptRepository.getReceiptDetail(receiptId);
     }
 
 

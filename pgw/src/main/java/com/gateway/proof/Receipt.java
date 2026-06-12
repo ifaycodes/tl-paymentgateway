@@ -5,11 +5,15 @@ import java.time.LocalDateTime;
 
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import com.gateway.data.PaymentRepository;
 import com.gateway.models.OrderDetail;
 import com.gateway.state.State;
 
+import javax.sql.DataSource;
+
+@Service
 public class Receipt {
     public String orderId;
     public String customerId;
@@ -21,12 +25,14 @@ public class Receipt {
     public LocalDateTime timeStamp;
 
     @Autowired
-    PaymentRepository paymentRepository;
+    private PaymentRepository paymentRepository;
     
 
     //constructor
-    public Receipt() //(String orderId, String customerId, String currentState, String amount) 
-        {}
+    public Receipt(DataSource dataSource, PaymentRepository paymentRepository) //(String orderId, String customerId, String currentState, String amount) 
+        {
+            this.paymentRepository = paymentRepository;
+        }
 
     //creating a receipt
     public String createReceipt(String orderId, String customerId, String amount) throws SQLException {
@@ -38,16 +44,16 @@ public class Receipt {
 
         receipt.append("This receipt is for order " + orderId + "\n");
         receipt.append("Customer ID: " + customerId + "\n Order amount: " + amount + "usd\n Payment reference: " + paymentRef + "\n");
-        receipt.append("Current State of order: " + currentState);
+        receipt.append("Current State of order: " + currentState + "\n");
         receipt.append("Authorization ID: " + order.getAuthorizationId() + ", authorized at: " + order.getCreatedAt() + "\n");
         
         if (currentState == State.CAPTURED) {
-            receipt.append("Capture ID: " + order.getCaptureId() + ", captured at: " + order.getCapturedAt() + "\n");
+            receipt.append("Capture ID: " + order.getCaptureId() + ", captured at: " + order.getCapturedAt().substring(0, 19) + "\n");
         } else if (currentState == State.REFUNDED) {
-            receipt.append("Captured ID: " + order.getCaptureId() + ", captured at: " + order.getCapturedAt() + "\n");
-            receipt.append("Refund ID: " + order.getRefundId() + ", refunded at: " + order.getRefundedAt() + "\n");
+            receipt.append("Captured ID: " + order.getCaptureId() + ", captured at: " + order.getCapturedAt().substring(0, 19) + "\n");
+            receipt.append("Refund ID: " + order.getRefundId() + ", refunded at: " + order.getRefundedAt().substring(0, 19) + "\n");
         } else if (currentState == State.VOIDED) {
-            receipt.append("Voided ID: " + order.getVoidId() + ", captured at: " + order.getVoidedAt() + "\n");
+            receipt.append("Voided ID: " + order.getVoidId() + ", captured at: " + order.getVoidedAt().substring(0, 19) + "\n");
         }
 
 
