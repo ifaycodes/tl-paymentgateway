@@ -33,10 +33,10 @@ public class StateMachine {
 
         transitions.put(State.APPROVED, new EnumMap<>(Event.class));
         transitions.get(State.APPROVED).put(Event.WITHDRAW_FUNDS, State.CAPTURED);
-        transitions.get(State.APPROVED).put(Event.CANCEL_TRANSACTION, State.VOIDED);
+        transitions.get(State.APPROVED).put(Event.CANCEL_AUTH, State.VOIDED);
 
         transitions.put(State.CAPTURED, new EnumMap<>(Event.class));
-        transitions.get(State.CAPTURED).put(Event.CANCEL_ORDER, State.REFUNDED);
+        transitions.get(State.CAPTURED).put(Event.REFUND_FUNDS, State.REFUNDED);
 
         transitions.put(State.VOIDED, new EnumMap<>(Event.class));
         transitions.put(State.REFUNDED, new EnumMap<>(Event.class));

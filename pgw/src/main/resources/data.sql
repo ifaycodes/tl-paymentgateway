@@ -1,21 +1,23 @@
 CREATE TABLE IF NOT EXISTS payments (
     paymentRef     VARCHAR PRIMARY KEY,
-    authorizationId VARCHAR,   -- auth_<uuid> from the bank
-    captureId       VARCHAR,
-    voidId          VARCHAR,
-    refundId        VARCHAR,
     orderId        VARCHAR,
     customerId     VARCHAR,
     amount          INTEGER,
-    currentState    VARCHAR,    -- AUTHORIZED, CAPTURED, VOIDED, REFUNDED
-    createdAt      TIMESTAMP,
-    capturedAt      TIMESTAMP,
-    voidedAt        TIMESTAMP,
-    refundedAt      TIMESTAMP
+    currentState    VARCHAR,
+    currency        VARCHAR,
+    createdAt       VARCHAR
+
 );
 
-CREATE TABLE IF NOT EXISTS receipts (
-    receiptId       VARCHAR PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS paymentevent (
     paymentRef      VARCHAR,
-    dateCreated     TIMESTAMP
+    idempotencyKey  VARCHAR,
+    currentState    VARCHAR,
+    bankTransactionId   VARCHAR,
+    timestamp     TIMESTAMP,
+    notes           VARCHAR
+);
+
+CREATE TABLE IF NOT EXISTS auditLog (
+
 );

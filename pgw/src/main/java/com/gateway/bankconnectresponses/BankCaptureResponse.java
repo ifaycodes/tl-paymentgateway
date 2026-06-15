@@ -1,4 +1,4 @@
-package com.gateway.bankconnect;
+package com.gateway.bankconnectresponses;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BankCaptureResponse {
     private int amount;
+    private String idempotencyKey;
 
     @JsonProperty("auntorization_id")
     private String authorizationId;
@@ -60,5 +61,12 @@ public class BankCaptureResponse {
     public void setCurrentState(String 
         currentState) {
         this.currentState = currentState;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
     }
 }

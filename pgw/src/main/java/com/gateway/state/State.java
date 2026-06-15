@@ -5,6 +5,7 @@ public enum State {
     APPROVED,
     CAPTURED,
     REFUNDED,
-    VOIDED
+    VOIDED,
+    FAILED
 }
 

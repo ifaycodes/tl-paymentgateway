@@ -1,10 +1,12 @@
-package com.gateway.bankconnect;
+package com.gateway.bankconnectresponses;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BankVoidResponse {
+
+    private String idempotencyKey;
 
     @JsonProperty("authorization_id")
     private String authorizationId;
@@ -18,6 +20,12 @@ public class BankVoidResponse {
     @JsonProperty("voided_at")
     private String voidedAt;
 
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
+    }
     
     public String getAuthorizationId() {
         return authorizationId;

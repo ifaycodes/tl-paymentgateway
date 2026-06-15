@@ -1,4 +1,4 @@
-package com.gateway.bankconnect;
+package com.gateway.bankconnectresponses;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;

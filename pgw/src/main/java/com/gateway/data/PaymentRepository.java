@@ -4,12 +4,13 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 
 import javax.sql.DataSource;
 
 import org.springframework.stereotype.Repository;
 
-import com.gateway.models.OrderDetail;
+import com.gateway.models.PaymentDetail;
 import com.gateway.state.State;
 
 @Repository
@@ -21,23 +22,23 @@ public class PaymentRepository {
         this.dataSource = dataSource;
     }
 
-    // to add an order to the database
-    public void save(OrderDetail orderDetail) throws SQLException {
+    // to add an order payment to the database
+    public void save(PaymentDetail paymentDetail) throws SQLException {
         String sql = """
-                INSERT INTO payments (paymentRef, authorizationId, orderId, customerId, amount, currentState, createdAt)
+                INSERT INTO payments (paymentRef, orderId, customerId, amount, currentState, currency, createdAt)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """;
 
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement statement = connection.prepareStatement(sql)) {
                     
-                    statement.setString(1, orderDetail.getPaymentRef());
-                    statement.setString(2, orderDetail.getAuthorizationId());
-                    statement.setString(3, orderDetail.getOrderId());
-                    statement.setString(4, orderDetail.getCustomerId());
-                    statement.setInt(5, orderDetail.getAmount());
-                    statement.setString(6, orderDetail.getCurrentState().toString());
-                    statement.setString(7, orderDetail.getCreatedAt());
+                    statement.setString(1, paymentDetail.getPaymentRef());
+                    statement.setString(2, paymentDetail.getOrderId());
+                    statement.setString(3, paymentDetail.getCustomerId());
+                    statement.setInt(4, paymentDetail.getAmount());
+                    statement.setString(5, paymentDetail.getCurrentState().toString());
+                    statement.setString(6, paymentDetail.getCurrency());
+                    statement.setString(7, paymentDetail.getCreatedAt().toString());
 
                     statement.executeUpdate();
                 }
@@ -46,37 +47,33 @@ public class PaymentRepository {
 
 
     // to find an order in the database using the paymentRef
-    public OrderDetail findByPaymentRef(String paymentRef) throws SQLException {
+    public PaymentDetail findByPaymentRef(String paymentRef) throws SQLException {
         String sql = "SELECT * FROM payments WHERE paymentRef = ?";
 
         try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(sql)) {
         statement.setString(1, paymentRef);
+
         ResultSet result = statement.executeQuery();
 
         if (result.next()) {
-                OrderDetail order = new OrderDetail();
-                order.setPaymentRef(result.getString("paymentRef"));
-                order.setOrderId(result.getString("orderId"));
-                order.setCustomerId(result.getString("customerId"));
-                order.setAmount(result.getInt("amount"));
-                order.setCurrentState(State.valueOf(result.getString("currentState")));
-                order.setAuthorizationId(result.getString("authorizationId"));
-                order.setCaptureId(result.getString("captureId"));
-                order.setRefundId(result.getString("refundId"));
-                order.setVoidId(result.getString("voidId"));
-                order.setCreatedAt(result.getString("createdAt"));
-                order.setVoidedAt(result.getString("voidedAt"));
-                order.setCapturedAt(result.getString("capturedAt"));
-                order.setRefundedAt(result.getString("refundedAt"));
-                return order;
+                PaymentDetail payment = new PaymentDetail();
+                payment.setPaymentRef(result.getString("paymentRef"));
+                payment.setOrderId(result.getString("orderId"));
+                payment.setCustomerId(result.getString("customerId"));
+                payment.setAmount(result.getInt("amount"));
+                payment.setCurrentState(State.valueOf(result.getString("currentState")));
+                payment.setCreatedAt(LocalDateTime.parse(result.getString("createdAt")));
+                return payment;
             }
 
             return null;
     }
     }
 
-    public OrderDetail findByCustomerId(String customerId) throws SQLException {
+    
+    // to see all orders by the customer with that customerid
+    public PaymentDetail findByCustomerId(String customerId) throws SQLException {
         String sql = "SELECT * FROM payments WHERE customerId = ?";
 
         try (Connection connection = dataSource.getConnection();
@@ -86,19 +83,20 @@ public class PaymentRepository {
         ResultSet result = statement.executeQuery();
 
         if (result.next()) {
-                OrderDetail order = new OrderDetail();
-                order.setPaymentRef(result.getString("paymentRef"));
-                order.setOrderId(result.getString("orderId"));
-                order.setAmount(result.getInt("amount"));
-                order.setCurrentState(State.valueOf(result.getString("currentState")));
-                return order;
+                PaymentDetail payment = new PaymentDetail();
+                payment.setPaymentRef(result.getString("paymentRef"));
+                payment.setOrderId(result.getString("orderId"));
+                payment.setAmount(result.getInt("amount"));
+                payment.setCurrentState(State.valueOf(result.getString("currentState")));
+                return payment;
             }
 
             return null;
     }
     }
 
-    public State findByOrderId(String orderId) throws SQLException {
+    // to see the details of an order
+    public PaymentDetail findByOrderId(String orderId) throws SQLException {
         String sql = "SELECT * FROM payments WHERE orderId = ?";
 
         try (Connection connection = dataSource.getConnection();
@@ -107,17 +105,36 @@ public class PaymentRepository {
         ResultSet result = statement.executeQuery();
 
         if (result.next()) {
-            OrderDetail order = new OrderDetail();
-            order.setCurrentState(State.valueOf(result.getString("currentState")));
+            PaymentDetail payment = new PaymentDetail();
+            payment.setPaymentRef(result.getString("paymentRef"));
+            payment.setCustomerId(result.getString("customerId"));
+            payment.setAmount(result.getInt("amount"));
+            payment.setCurrentState(State.valueOf(result.getString("currentState")));
+            payment.setCreatedAt(LocalDateTime.parse(result.getString("createdAt")));
 
-            State orderStatus = order.getCurrentState();
-            return orderStatus;
+            return payment;
         }
         return null;
     }
     }
+
+    // update the currentstate column to approved after calling bank api
+    public void updateAuthorization(String paymentRef, String status) throws SQLException {
+        String sql = "UPDATE payments SET authorizationId = ? WHERE paymentRef = ?";
+        if (status == "approved") {
+            String currentState = "APPROVED";
+
+            try (Connection connection = dataSource.getConnection();
+            PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setString(1, currentState);
+                statement.setString(2, paymentRef);
+
+                statement.executeUpdate();
+            }
+        }
+    }
     
-    public void updateCapture(String paymentRef, String captureId, String capturedAt) throws SQLException {
+    /*public void updateCapture(String paymentRef, String captureId, String capturedAt) throws SQLException {
         String sql = "UPDATE payments SET captureId = ?, capturedAt = ? WHERE paymentRef = ?";
 
         try (Connection connection = dataSource.getConnection();
@@ -154,10 +171,10 @@ public class PaymentRepository {
 
                 statement.executeUpdate();
             }
-    }
+    }*/
 
 
-    // updates the status of the order depending on the stage the order is 
+    // updates the status of the payment depending on the stage the payment is 
     public void updateStatus(String paymentRef, State currentState) throws SQLException {
         String sql = "UPDATE payments SET currentState = ? WHERE paymentRef = ?";
 

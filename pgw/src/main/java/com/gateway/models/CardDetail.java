@@ -1,4 +1,4 @@
-package com.gateway.carddetails;
+package com.gateway.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
