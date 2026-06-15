@@ -1,4 +1,4 @@
-package com.gateway.state;
+/*package com.gateway.state;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -56,4 +56,4 @@ public class StateMachine {
         }
 
     }
-}
+}*/

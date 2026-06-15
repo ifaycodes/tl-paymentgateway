@@ -4,7 +4,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
@@ -24,19 +23,16 @@ import com.gateway.bankconnectresponses.BankRefundResponse;
 import com.gateway.bankconnectresponses.BankVoidResponse;
 import com.gateway.data.PaymentEventRepository;
 import com.gateway.data.PaymentRepository;
-import com.gateway.data.ReceiptRepository;
 import com.gateway.models.CardDetail;
 import com.gateway.models.PaymentDetail;
 import com.gateway.models.PaymentEvent;
 import com.gateway.proof.Receipt;
 import com.gateway.state.State;
-import com.gateway.state.StateMachine;
 
 @RestController
 @RequestMapping("/api/v1")
 public class GatewayApis {
 
-    StateMachine stateMachine = new StateMachine();
 
     @Autowired
     private Receipt receipt;
@@ -47,8 +43,6 @@ public class GatewayApis {
     @Autowired
     private PaymentRepository paymentRepository;
 
-    @Autowired
-    private ReceiptRepository receiptRepository;
 
     @Autowired
     private PaymentEventRepository paymentEventRepository;
@@ -56,11 +50,10 @@ public class GatewayApis {
     PaymentDetail paymentDetail = new PaymentDetail();
     PaymentEvent paymentEvent = new PaymentEvent();
 
-    public GatewayApis(DataSource dataSource, PaymentRepository paymentRepository, PaymentEventRepository paymentEventRepository, BankClient bankClient, ReceiptRepository receiptRepository, Receipt receipt) {
+    public GatewayApis(DataSource dataSource, PaymentRepository paymentRepository, PaymentEventRepository paymentEventRepository, BankClient bankClient, Receipt receipt) {
         this.paymentRepository = paymentRepository;
         this.paymentEventRepository = paymentEventRepository;
         this.bankClient = bankClient;
-        this.receiptRepository = receiptRepository;
         this.receipt = receipt;
     }
 
@@ -283,21 +276,8 @@ public class GatewayApis {
     }
 
     @PostMapping("/receipts")
-    public String receipts(@RequestParam String orderId, @RequestParam String customerId, @RequestParam String amount) throws SQLException {
-        String orderReceipt = receipt.createReceipt(orderId, customerId, amount);
-
-        String paymentRef = paymentRepository.findByCustomerId(customerId).getPaymentRef();
-
-        if (!receiptRepository.getReceiptByRef(paymentRef)) {
-
-            LocalDateTime dateCreated = LocalDateTime.now();
-
-            int lastReceiptId = receiptRepository.findLastReceiptId();
-            int receiptId = lastReceiptId + 1;
-
-            receiptRepository.save(receiptId, paymentRef, dateCreated);
-            
-        }
+    public String receipts(@RequestParam String orderId) throws SQLException {
+        String orderReceipt = receipt.createReceipt(orderId);
 
         return orderReceipt;
     }
