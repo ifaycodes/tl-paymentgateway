@@ -68,7 +68,7 @@ The app starts on **port 8081** and uses an in-memory H2 database seeded from `d
 
 ## Bank Dependency
 
-`BankClient` is hardcoded to call a bank/acquirer service at `http://localhost:8787/api/v1`, expecting endpoints for `/authorizations`, `/captures`, `/voids`, and `/refunds`. This service must be running separately (e.g. a mock bank simulator) for authorize/capture/void/refund flows to succeed end-to-end.
+`BankClient` is hardcoded to call a bank/acquirer service at `http://localhost:8787/api/v1`, expecting endpoints for `/authorizations`, `/captures`, `/voids`, and `/refunds`. This service must be running separately (e.g. a mock bank simulator) for authorize/capture/void/refund flows to succeed end-to-end. [Find here](https://github.com/benx421/payment-gateway/blob/main/bank/README.md)
 
 ## API Overview
 
@@ -77,9 +77,9 @@ All endpoints are under `/api/v1`.
 | Method | Endpoint | Description |
 |---|---|---|
 | POST | `/authorize` | Authorize a card payment (`amount`, `orderId`, `customerId`, `cardNumber`, `cvv`, `expiryMonth`, `expiryYear`) |
-| GET | `/authorize/authorizationId=...` | Fetch authorization status from the bank |
+| GET | `/authorize?paymentRef=...` | Fetch authorization status from the bank |
 | POST | `/capture?paymentRef=...` | Capture a previously authorized payment |
-| GET | (capture lookup) `capture/{captureId}`=...` | Fetch capture status from the bank |
+| GET | (capture lookup) `?paymentRef=...` | Fetch capture status from the bank |
 | POST | `/void?paymentRef=...` | Void an authorized payment |
 | POST | `/refund?paymentRef=...` | Refund a captured payment |
 | GET | (refund lookup) `?paymentRef=...` | Fetch refund status from the bank |
