@@ -1,6 +1,5 @@
 package com.gateway.data;
 
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.sql.PreparedStatement;
@@ -38,7 +37,7 @@ public class PaymentEventRepository {
                     statement.setString(2, paymentEvent.getIdempotencyKey());
                     statement.setString(3, paymentEvent.getBankTransactionId());
                     statement.setString(4, paymentEvent.getCurrentState().toString());
-                    statement.setTimestamp(5, Timestamp.valueOf(paymentEvent.getTimeCreated()));
+                    statement.setString(5, paymentEvent.getTimeCreated());
                     statement.setString(6, paymentEvent.getNotes());
 
                     statement.executeUpdate();
@@ -50,26 +49,26 @@ public class PaymentEventRepository {
     public List<PaymentEvent> findByPaymentRef(String paymentRef) throws SQLException {
         String sql = "SELECT * FROM paymentevent WHERE paymentRef = ?";
 
+        
+        List<PaymentEvent> entries = new ArrayList<>();
         try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(sql)) {
-        statement.setString(1, paymentRef);
+            statement.setString(1, paymentRef);
 
-        ResultSet result = statement.executeQuery();
+            ResultSet result = statement.executeQuery();
 
-        if (result.next()) {
-                List<PaymentEvent> entries = new ArrayList<>();
+            while (result.next()) {
                 PaymentEvent paymentEvent = new PaymentEvent();
                 paymentEvent.setPaymentRef(result.getString("paymentRef"));
                 paymentEvent.setIdempotencyKey(result.getString("idempotencyKey"));
                 paymentEvent.setBankTransactionId(result.getString("bankTransactionId"));
                 paymentEvent.setCurrentState(State.valueOf(result.getString("currentState")));
-                paymentEvent.setTimeCreated(result.getString("createdAt"));
+                paymentEvent.setTimeCreated(result.getString("timeCreated"));
                 entries.add(paymentEvent);
-                return entries;
             }
 
-            return null;
-    }
+            return entries;
+        }
     }
 
     public Boolean findByIdemKey(String idempKey) throws SQLException {
@@ -89,7 +88,7 @@ public class PaymentEventRepository {
         }
     }
 
-    /*public void updateNotes(String note, String paymentRef) throws SQLException {
+    public void updateNotes(String note, String paymentRef) throws SQLException {
         String sql = "UPDATE paymentevent SET notes = ? WHERE paymentRef = ?";
 
         try (Connection connection = dataSource.getConnection();
@@ -99,6 +98,6 @@ public class PaymentEventRepository {
 
                 statement.executeUpdate();
             }
-    }*/
+    }
 
 }

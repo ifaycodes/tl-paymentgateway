@@ -13,7 +13,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<?> handleTranscientError(BankNotConnectingException e) {
         return ResponseEntity.status(503).body(Map.of(
             "error", "Bank_UNAVAILABLE",
-            "message", "Please retry"
+            "message", e.getMessage()
         ));
     }
 
@@ -37,7 +37,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<?> handleGenericErrors(Exception e) {
         return ResponseEntity.status(500).body(Map.of(
             "error", "INTERNAL_ERROR",
-            "message", "Something went wrong"
+            "message", "Something went wrong. " + e.getMessage()
         ));
     }
 }

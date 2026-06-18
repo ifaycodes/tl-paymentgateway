@@ -8,16 +8,20 @@ import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.gateway.bankconnectresponses.BankAuthResponse;
 import com.gateway.bankconnectresponses.BankCaptureResponse;
 import com.gateway.bankconnectresponses.BankRefundResponse;
 import com.gateway.bankconnectresponses.BankVoidResponse;
+import com.gateway.data.AuditRepository;
 import com.gateway.errors.BankNotConnectingException;
 import com.gateway.errors.BankPermanentError;
 import com.gateway.errors.ResourceNotFound;
 import com.gateway.models.CardDetail;
+
+import javax.sql.DataSource;
 
 @Service
 public class BankClient {
@@ -25,9 +29,16 @@ public class BankClient {
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private static final String BANK_URL = "http://localhost:8787/api/v1";
 
+    @Autowired
+    private AuditRepository auditRepository;
 
-    public BankAuthResponse postAuthorization(CardDetail cardDetail, int amount) throws Exception {
-        String id = cardDetail.getCvv() + cardDetail.getCardNumber() + amount;
+    public BankClient(AuditRepository auditRepository, DataSource dataSource) {
+        this.auditRepository = auditRepository;
+}
+
+
+    public BankAuthResponse postAuthorization(CardDetail cardDetail, int amount, String orderId, String paymentRef) throws Exception {
+        String id = orderId + amount;
         UUID idempotencyKey = UUID.nameUUIDFromBytes(id.getBytes());
 
         // http request body
@@ -53,6 +64,10 @@ public class BankClient {
         HttpResponse<String> response = httpClient.send(request, 
                 HttpResponse.BodyHandlers.ofString());
 
+        System.out.println("Replayed: " + response.headers().firstValue("X-Idempotent-Replayed"));
+        
+        // log response
+        auditRepository.logResponse(paymentRef, response.body());
         // check reposnse status code and catch any errors
         int statusCode = response.statusCode();
 
@@ -71,7 +86,7 @@ public class BankClient {
     }
 
 
-    public BankAuthResponse getAuthorization(String authorizationId) throws Exception {
+    public BankAuthResponse getAuthorization(String authorizationId, String paymentRef) throws Exception {
 
         // building the HTTP request
         HttpRequest request = HttpRequest.newBuilder()
@@ -82,6 +97,9 @@ public class BankClient {
 
         HttpResponse<String> response = httpClient.send(request, 
                 HttpResponse.BodyHandlers.ofString());
+
+        //log response
+        auditRepository.logResponse(paymentRef, response.body());
 
         // check reposnse status code and catch any errors
         int statusCode = response.statusCode();
@@ -101,7 +119,7 @@ public class BankClient {
     }
 
 
-    public BankCaptureResponse postCapture(int amount, String authorizationId) throws Exception {
+    public BankCaptureResponse postCapture(int amount, String authorizationId, String paymentRef) throws Exception {
         String id = authorizationId + amount;
         UUID idempotencyKey = UUID.nameUUIDFromBytes(id.getBytes());
 
@@ -125,6 +143,9 @@ public class BankClient {
                 HttpResponse.BodyHandlers.ofString());
 
         
+        // log response
+        auditRepository.logResponse(paymentRef, response.body());
+
         //check response status and catch errors
         int statusCode = response.statusCode();
 
@@ -143,7 +164,7 @@ public class BankClient {
         
     }
 
-    public BankCaptureResponse getCapture(String captureId) throws Exception {
+    public BankCaptureResponse getCapture(String captureId, String paymentRef) throws Exception {
 
         // building the HTTP request
         HttpRequest request = HttpRequest.newBuilder()
@@ -154,6 +175,9 @@ public class BankClient {
 
         HttpResponse<String> response = httpClient.send(request, 
                 HttpResponse.BodyHandlers.ofString());
+
+        //log response
+        auditRepository.logResponse(paymentRef, response.body());
 
         // check reposnse status code and catch any errors
         int statusCode = response.statusCode();
@@ -172,7 +196,7 @@ public class BankClient {
         }
     }
 
-    public BankVoidResponse postVoid(String authorizationId) throws Exception {
+    public BankVoidResponse postVoid(String authorizationId, String paymentRef) throws Exception {
         String id = authorizationId;
         UUID idempotencyKey = UUID.nameUUIDFromBytes(id.getBytes());
 
@@ -193,7 +217,10 @@ public class BankClient {
 
         HttpResponse<String> response = httpClient.send(request, 
                 HttpResponse.BodyHandlers.ofString());
+        
 
+        // log response
+        auditRepository.logResponse(paymentRef, response.body());
 
         //check response status and catch errors
         int statusCode = response.statusCode();
@@ -214,7 +241,7 @@ public class BankClient {
         
      }
 
-    public BankRefundResponse postRefund(int amount, String captureId) throws Exception {
+    public BankRefundResponse postRefund(int amount, String captureId, String paymentRef) throws Exception {
         String id = captureId + amount;
         UUID idempotencyKey = UUID.nameUUIDFromBytes(id.getBytes());
 
@@ -238,6 +265,9 @@ public class BankClient {
                 HttpResponse.BodyHandlers.ofString());
 
         
+        // log response
+        auditRepository.logResponse(paymentRef, response.body());
+
         //check response status and catch errors
         int statusCode = response.statusCode();
 
@@ -256,7 +286,7 @@ public class BankClient {
         
     }
 
-    public BankRefundResponse getRefund(String refundId) throws Exception {
+    public BankRefundResponse getRefund(String refundId, String paymentRef) throws Exception {
 
         // building the HTTP request
         HttpRequest request = HttpRequest.newBuilder()
@@ -267,6 +297,9 @@ public class BankClient {
 
         HttpResponse<String> response = httpClient.send(request, 
                 HttpResponse.BodyHandlers.ofString());
+
+        //log response
+        auditRepository.logResponse(paymentRef, response.body());
 
         // check reposnse status code and catch any errors
         int statusCode = response.statusCode();

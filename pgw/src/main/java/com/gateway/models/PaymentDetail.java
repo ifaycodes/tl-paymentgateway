@@ -1,6 +1,5 @@
 package com.gateway.models;
 
-import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.gateway.state.State;
@@ -15,7 +14,7 @@ public class PaymentDetail {
     private int amount;
     private State currentState; //(authorized, captured, voided, refunded)
     private String currency = "USD";
-    private LocalDateTime createdAt;
+    private String createdAt;
 
 
     //getters and setters
@@ -58,10 +57,10 @@ public class PaymentDetail {
         this.currentState = currentState;
     }
  
-    public LocalDateTime getCreatedAt() {
+    public String getCreatedAt() {
         return createdAt;
     }
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
     }
 }

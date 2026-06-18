@@ -4,7 +4,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
 
 import javax.sql.DataSource;
 
@@ -25,8 +24,8 @@ public class PaymentRepository {
     // to add an order payment to the database
     public void save(PaymentDetail paymentDetail) throws SQLException {
         String sql = """
-                INSERT INTO payments (paymentRef, orderId, customerId, amount, currentState, currency, createdAt)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO payments (paymentRef, orderId, customerId, amount, currentState, currency)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """;
 
         try (Connection connection = dataSource.getConnection();
@@ -38,7 +37,6 @@ public class PaymentRepository {
                     statement.setInt(4, paymentDetail.getAmount());
                     statement.setString(5, paymentDetail.getCurrentState().toString());
                     statement.setString(6, paymentDetail.getCurrency());
-                    statement.setString(7, paymentDetail.getCreatedAt().toString());
 
                     statement.executeUpdate();
                 }
@@ -63,7 +61,7 @@ public class PaymentRepository {
                 payment.setCustomerId(result.getString("customerId"));
                 payment.setAmount(result.getInt("amount"));
                 payment.setCurrentState(State.valueOf(result.getString("currentState")));
-                payment.setCreatedAt(LocalDateTime.parse(result.getString("createdAt")));
+                payment.setCreatedAt(result.getString("createdAt"));
                 return payment;
             }
 
@@ -110,7 +108,7 @@ public class PaymentRepository {
             payment.setCustomerId(result.getString("customerId"));
             payment.setAmount(result.getInt("amount"));
             payment.setCurrentState(State.valueOf(result.getString("currentState")));
-            payment.setCreatedAt(LocalDateTime.parse(result.getString("createdAt")));
+            payment.setCreatedAt(result.getString("createdAt"));
 
             return payment;
         }
@@ -119,15 +117,16 @@ public class PaymentRepository {
     }
 
     // update the currentstate column to approved after calling bank api
-    public void updateAuthorization(String paymentRef, String status) throws SQLException {
-        String sql = "UPDATE payments SET authorizationId = ? WHERE paymentRef = ?";
-        if (status == "approved") {
+    public void updateAuthorization(String paymentRef, String status, String createdAt) throws SQLException {
+        String sql = "UPDATE payments SET currentState = ?, createdAt = ? WHERE paymentRef = ?";
+        if (status.equals("approved")) {
             String currentState = "APPROVED";
 
             try (Connection connection = dataSource.getConnection();
             PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, currentState);
-                statement.setString(2, paymentRef);
+                statement.setString(2, createdAt);
+                statement.setString(3, paymentRef);
 
                 statement.executeUpdate();
             }

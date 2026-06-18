@@ -6,7 +6,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.sql.DataSource;
 
@@ -15,46 +16,46 @@ import org.springframework.stereotype.Repository;
 import com.gateway.models.ReceiptDetails;
 
 @Repository
-public class ReceiptRepository {
+public class AuditRepository {
 
     private final DataSource dataSource;
 
-    public ReceiptRepository(DataSource dataSource) {
+    public AuditRepository(DataSource dataSource) {
         this.dataSource = dataSource;
     }
 
-    public void save(int receiptId, String paymentRef, LocalDateTime dateCreated) throws SQLException {
+    public void logResponse(String paymentRef, String response) throws SQLException {
         String sql = """
-                INSERT INTO receipts (receiptId, paymentRef, dateCreated)
+                INSERT INTO logs (paymentRef, response, timeCreated)
                 VALUES (?, ?, ?)
                 """;
 
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement statement = connection.prepareStatement(sql)) {
                     
-                    statement.setInt(1, receiptId);
-                    statement.setString(2, paymentRef);
-                    statement.setTimestamp(3, Timestamp.valueOf(dateCreated));
+                    statement.setString(1, paymentRef);
+                    statement.setObject(2, response);
+                    statement.setTimestamp(3, Timestamp.valueOf(LocalDateTime.now()));
 
                     statement.executeUpdate();
                 }
 
     }
 
-    public int findLastReceiptId() throws SQLException {
+    public List<String> findLogsByPaymentRef(String paymentRef) throws SQLException {
         String sql = """
-                SELECT * FROM receipts ORDER BY receiptId DESC LIMIT 1;
+                SELECT * FROM logs ORDER BY timeCreated DESC;
                 """;
 
+        List<String> log = new ArrayList<>();
         try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(sql)){
             ResultSet result = statement.executeQuery();
 
         if (result.next()) {
-            int receiptId = result.getInt("receiptId");
-            return receiptId;
+            log.add(result.getString("paymentRef") + " - " + result.getString("response")); 
         }
-        return 0;
+        return log;
     }
         
     }

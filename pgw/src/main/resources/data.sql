@@ -14,10 +14,13 @@ CREATE TABLE IF NOT EXISTS paymentevent (
     idempotencyKey  VARCHAR,
     currentState    VARCHAR,
     bankTransactionId   VARCHAR,
-    timestamp     TIMESTAMP,
+    timeCreated     VARCHAR,
     notes           VARCHAR
 );
 
-CREATE TABLE IF NOT EXISTS auditLog (
+CREATE TABLE IF NOT EXISTS logs (
+    paymentRef      VARCHAR,
+    response        VARCHAR,
+    timeCreated     TIMESTAMP
 
 );
