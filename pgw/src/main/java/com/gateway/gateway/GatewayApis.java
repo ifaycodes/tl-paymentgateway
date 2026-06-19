@@ -36,7 +36,6 @@ import com.gateway.state.State;
 @RequestMapping("/api/v1")
 public class GatewayApis {
 
-
     @Autowired
     private Receipt receipt;
 
@@ -74,13 +73,13 @@ public class GatewayApis {
 
 
         String id = orderId + amount;
-        UUID idempotencyKey = UUID.nameUUIDFromBytes(id.getBytes());
+        String idempotencyKey = UUID.nameUUIDFromBytes(id.getBytes()).toString();
 
         String paymentRef = generatePaymentRef(orderId, customerId);
 
 
         //check if idempotencyKey already exist in db. if it does, no need to do save again and call bank
-        if (!paymentEventRepository.findByIdemKey(idempotencyKey.toString())) {
+        if (!paymentEventRepository.findByIdemKey(idempotencyKey)) {
 
             // populate the payment details and save to db so to save the information before calling bank
             if (paymentRepository.findByPaymentRef(paymentRef) == null) {
@@ -97,7 +96,7 @@ public class GatewayApis {
             while (attempts < 3) {
                 try {
                     // calling bank api
-                    BankAuthResponse bankResponse = bankClient.postAuthorization(cardDetail, amount, orderId, paymentRef);
+                    BankAuthResponse bankResponse = bankClient.postAuthorization(cardDetail, amount, orderId, paymentRef, idempotencyKey);
                     
                     // update payment status
                     paymentRepository.updateAuthorization(paymentRef, bankResponse.getCurrentState(), bankResponse.getCreatedAt());

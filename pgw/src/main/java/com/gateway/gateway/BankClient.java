@@ -37,9 +37,7 @@ public class BankClient {
 }
 
 
-    public BankAuthResponse postAuthorization(CardDetail cardDetail, int amount, String orderId, String paymentRef) throws Exception {
-        String id = orderId + amount;
-        UUID idempotencyKey = UUID.nameUUIDFromBytes(id.getBytes());
+    public BankAuthResponse postAuthorization(CardDetail cardDetail, int amount, String orderId, String paymentRef, String idempotencyKey) throws Exception {
 
         // http request body
         String requestBody = """
