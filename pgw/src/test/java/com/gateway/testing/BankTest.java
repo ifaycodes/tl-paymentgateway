@@ -11,15 +11,9 @@ import com.gateway.proof.Receipt;
 import com.gateway.state.State;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
-import java.util.UUID;
 
 import javax.sql.DataSource;
 
@@ -100,13 +94,48 @@ public class BankTest {
 
         gatewayApis.authorize(amount, orderId, customerId, cardNumber, cvv, expiryMonth, expiryYear);
 
-        //assertNotNull(paymentRepository.findByPaymentRef(paymentRef));
         assertEquals(State.APPROVED, paymentRepository.findByOrderId(orderId).getCurrentState());
         
-        //String paymentRef = paymentRepository.findByOrderId(orderId).getPaymentRef();
-        //String approvedAt = paymentEventRepository.findByPaymentRef(paymentRef).get(paymentEventRepository.findByPaymentRef(paymentRef).size() - 1).getTimeCreated();
-        //System.out.print(approvedAt);
-        //System.out.print(paymentRepository.findByOrderId(orderId).getCreatedAt());
-        //assertNotEquals(paymentRepository.findByOrderId(orderId).getCreatedAt(), approvedAt);
+        String paymentRef = paymentRepository.findByOrderId(orderId).getPaymentRef();
+        String approvedAt = paymentEventRepository.findByPaymentRef(paymentRef).get(paymentEventRepository.findByPaymentRef(paymentRef).size() - 1).getTimeCreated();
+        System.out.print(approvedAt);
+        System.out.print(paymentRepository.findByOrderId(orderId).getCreatedAt());
+        assertEquals(paymentRepository.findByOrderId(orderId).getCreatedAt(), approvedAt);
+    }
+
+    @Test
+    void flagIncorrectCardDetails () throws Exception {
+        cardNumber = "411111111111111";
+
+       assertEquals("Card info is not correct", gatewayApis.authorize(amount, orderId, customerId, cardNumber, cvv, expiryMonth, expiryYear));
+    }
+
+    @Test
+    void captureRefusesVoidedTxns () throws Exception {
+
+        gatewayApis.authorize(amount, orderId, customerId, cardNumber, cvv, expiryMonth, expiryYear);
+        
+        String paymentRef = paymentRepository.findByOrderId(orderId).getPaymentRef();
+        
+        gatewayApis.voids(paymentRef);
+
+        assertEquals("This transaction CAN NOT be Captured. It has been Voided", gatewayApis.capture(paymentRef));
+    }
+
+    @Test
+    void voidRefusesCapturedTxns () throws Exception {
+
+        amount = 2000;
+        customerId = "cus002";
+        orderId = "ord002";
+
+        gatewayApis.authorize(amount, orderId, customerId, cardNumber, cvv, expiryMonth, expiryYear);
+        
+        String paymentRef = paymentRepository.findByOrderId(orderId).getPaymentRef();
+        
+        gatewayApis.capture(paymentRef);
+        String response = gatewayApis.voids(paymentRef);
+        
+        assertEquals("This transaction CAN NOT be Voided. Please try asking for a refund instead", response);
     }
 }

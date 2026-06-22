@@ -65,6 +65,9 @@ public class GatewayApis {
     // api mapping
     @PostMapping("/authorize")
     public String authorize(@RequestParam int amount, @RequestParam String orderId, @RequestParam String customerId, @RequestParam String cardNumber, @RequestParam String cvv, @RequestParam int expiryMonth, @RequestParam int expiryYear) throws Exception {
+        if (cardNumber.length() != 16) {
+            return ("Card info is not correct");
+        }
         CardDetail cardDetail = new CardDetail();
         cardDetail.setCardNumber(cardNumber);
         cardDetail.setCvv(cvv);
@@ -164,7 +167,7 @@ public class GatewayApis {
             authorizationId = lastEvent.getBankTransactionId();
             //break;
         } else {
-            return "This transaction CAN NOT be Captured. It has been Voided";
+            return "This transaction CAN NOT be Captured.";
         }
         
 
@@ -233,14 +236,14 @@ public class GatewayApis {
 
         String authorizationId = null;
         List<PaymentEvent> eventAssociatedWithRef = paymentEventRepository.findByPaymentRef(paymentRef);
-
-        for (PaymentEvent event : eventAssociatedWithRef) {
-            if (event.getCurrentState() == State.APPROVED) {
-                authorizationId = event.getBankTransactionId();
-                break;
-            }
+        PaymentEvent lastEvent = eventAssociatedWithRef.get(eventAssociatedWithRef.size() - 1);
+        
+        if (lastEvent.getCurrentState() == State.APPROVED) {
+            authorizationId = lastEvent.getBankTransactionId();
+            //break;
+        } else {
+            return "This transaction CAN NOT be Voided. Please try asking for a refund instead";
         }
-        System.out.println("auth id is : " + authorizationId);
 
         UUID idempotencyKey = UUID.nameUUIDFromBytes(authorizationId.getBytes());
         
@@ -288,11 +291,13 @@ public class GatewayApis {
         int amount = paymentRepository.findByPaymentRef(paymentRef).getAmount();
         String captureId = null;
         List<PaymentEvent> eventAssociatedWithRef = paymentEventRepository.findByPaymentRef(paymentRef);
-        for (PaymentEvent event : eventAssociatedWithRef) {
-            if (event.getCurrentState() == State.CAPTURED) {
-                captureId = event.getBankTransactionId();
-                break;
-            }
+        PaymentEvent lastEvent = eventAssociatedWithRef.get(eventAssociatedWithRef.size() - 1);
+        
+        if (lastEvent.getCurrentState() == State.CAPTURED) {
+            captureId = lastEvent.getBankTransactionId();
+            //break;
+        } else {
+            return "This transaction CAN NOT be Refunded. It was Voided. Void ID: " + lastEvent.getBankTransactionId();
         }
 
         String id = amount + captureId;
