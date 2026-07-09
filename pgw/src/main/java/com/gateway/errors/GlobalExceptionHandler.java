@@ -73,6 +73,9 @@ public class GlobalExceptionHandler {
 
 
     public String extractMessage(String message) throws JsonMappingException, JsonProcessingException {
+        if (message == null) {
+            return "Payment failed. Please try again.";
+        }
         String rawError = message;
 
         int jsonStart = rawError.indexOf("{");

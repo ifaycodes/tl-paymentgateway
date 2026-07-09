@@ -1,0 +1,58 @@
+services:
+  pgw:
+    build: .
+    container_name: pgw
+    ports:
+      - "8081:8081"
+    environment:
+      BANK_API_BASE_URL: http://mockbank-api:8080/api/v1
+    depends_on:
+      - mockbank-api
+    networks:
+      - pgw-network
+
+  mockbank-api:
+    image: docker-bank-api
+    container_name: mockbank-api
+    ports:
+      - "8787:8080"
+    environment:
+      DB_NAME: mockbank
+      PORT: 8080
+      MAX_LATENCY_MS: 2000
+      MIN_LATENCY_MS: 100
+      DB_PORT: 5432
+      DB_HOST: mockbank-postgres
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_SSLMODE: disable
+      LOG_LEVEL: debug
+      FAILURE_RATE: 0.05
+      AUTH_EXPIRY_HOURS: 168
+    depends_on:
+      - mockbank-postgres
+    networks:
+      - pgw-network
+
+  mockbank-postgres:
+    image: postgres:16-alpine
+    container_name: mockbank-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mockbank
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - mockbank-postgres-data:/var/lib/postgresql/data
+    networks:
+      - pgw-network
+
+networks:
+  pgw-network:
+    driver: bridge
+
+volumes:
+  mockbank-postgres-data:
+    external: true

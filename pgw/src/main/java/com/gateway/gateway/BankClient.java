@@ -1,5 +1,6 @@
 package com.gateway.gateway;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -63,8 +64,12 @@ public class BankClient {
                 .header("Idempotency-Key", idempotencyKey) // the idempptency key parameter
                 .build();
 
-        HttpResponse<String> response = httpClient.send(request,
-                HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response;
+        try {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (IOException e) {
+            throw new BankNotConnectingException("Bank temporarily unavailable: " + e.getMessage());
+        }
 
         // log response
         auditRepository.logResponse(paymentRef, response.body());
@@ -95,8 +100,12 @@ public class BankClient {
                 .header("Content-Type", "application/json")
                 .build();
 
-        HttpResponse<String> response = httpClient.send(request,
-                HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response;
+        try {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (IOException e) {
+            throw new BankNotConnectingException("Bank temporarily unavailable: " + e.getMessage());
+        }
 
         //log response
         auditRepository.logResponse(paymentRef, response.body());
@@ -137,8 +146,12 @@ public class BankClient {
                 .header("Idempotency-Key", idempotencyKey) // the idempptency key parameter
                 .build();
 
-        HttpResponse<String> response = httpClient.send(request,
-                HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response;
+        try {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (IOException e) {
+            throw new BankNotConnectingException("Bank temporarily unavailable: " + e.getMessage());
+        }
 
 
         // log response
@@ -171,8 +184,12 @@ public class BankClient {
                 .header("Content-Type", "application/json")
                 .build();
 
-        HttpResponse<String> response = httpClient.send(request,
-                HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response;
+        try {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (IOException e) {
+            throw new BankNotConnectingException("Bank temporarily unavailable: " + e.getMessage());
+        }
 
         //log response
         auditRepository.logResponse(paymentRef, response.body());
@@ -211,8 +228,12 @@ public class BankClient {
                 .header("Idempotency-Key", idempotencyKey) // the idempptency key parameter
                 .build();
 
-        HttpResponse<String> response = httpClient.send(request,
-                HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response;
+        try {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (IOException e) {
+            throw new BankNotConnectingException("Bank temporarily unavailable: " + e.getMessage());
+        }
 
 
         // log response
@@ -255,8 +276,12 @@ public class BankClient {
                 .header("Idempotency-Key", idempotencyKey) // the idempptency key parameter
                 .build();
 
-        HttpResponse<String> response = httpClient.send(request,
-                HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response;
+        try {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (IOException e) {
+            throw new BankNotConnectingException("Bank temporarily unavailable: " + e.getMessage());
+        }
 
 
         // log response
@@ -289,8 +314,12 @@ public class BankClient {
                 .header("Content-Type", "application/json")
                 .build();
 
-        HttpResponse<String> response = httpClient.send(request,
-                HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response;
+        try {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (IOException e) {
+            throw new BankNotConnectingException("Bank temporarily unavailable: " + e.getMessage());
+        }
 
         //log response
         auditRepository.logResponse(paymentRef, response.body());

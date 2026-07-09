@@ -79,7 +79,7 @@ public class BankTest {
     String cvv = "123";
     int expiryMonth = 12;
     int expiryYear = 30;
-    int amount = 1000;
+    int amount = 10;
     String customerId = "cus001";
     String orderId ="ord001";
     String paymentRef = amount + orderId;
