@@ -3,20 +3,12 @@ package com.gateway.gateway;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.sql.SQLException;
-import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 
-import javax.sql.DataSource;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
 
 import com.gateway.bankconnectresponses.BankAuthResponse;
 import com.gateway.bankconnectresponses.BankCaptureResponse;
@@ -26,54 +18,35 @@ import com.gateway.data.PaymentEventRepository;
 import com.gateway.data.PaymentRepository;
 import com.gateway.errors.BankNotConnectingException;
 import com.gateway.errors.BankPermanentError;
-import com.gateway.models.CardDetail;
+import com.gateway.errors.InvalidOrderDetail;
+import com.gateway.errors.ResourceNotFound;
+import com.gateway.errors.WrongCardDetail;
+import com.gateway.errors.WrongTransactionType;
+import com.gateway.models.OrderDetail;
 import com.gateway.models.PaymentDetail;
 import com.gateway.models.PaymentEvent;
-import com.gateway.proof.Receipt;
 import com.gateway.state.State;
 
-@RestController
-@RequestMapping("/api/v1")
-public class GatewayApis {
+@Service
+public class PaymentService {
 
-    @Autowired
-    private Receipt receipt;
+    private final BankClient bankClient;
+    private final PaymentRepository paymentRepository;
+    private final PaymentEventRepository paymentEventRepository;
 
-    @Autowired
-    private BankClient bankClient;
-
-    @Autowired
-    private PaymentRepository paymentRepository;
-
-
-    @Autowired
-    private PaymentEventRepository paymentEventRepository;
-
-    int attempts = 0;
-
-    PaymentDetail paymentDetail = new PaymentDetail();
-    PaymentEvent paymentEvent = new PaymentEvent();
-
-    //constructor
-    public GatewayApis(DataSource dataSource, PaymentRepository paymentRepository, PaymentEventRepository paymentEventRepository, BankClient bankClient, Receipt receipt) {
+    public PaymentService(PaymentRepository paymentRepository, PaymentEventRepository paymentEventRepository, BankClient bankClient) {
         this.paymentRepository = paymentRepository;
         this.paymentEventRepository = paymentEventRepository;
         this.bankClient = bankClient;
-        this.receipt = receipt;
     }
 
-    // api mapping
-    @PostMapping("/authorize")
-    public String authorize(@RequestParam int amount, @RequestParam String orderId, @RequestParam String customerId, @RequestParam String cardNumber, @RequestParam String cvv, @RequestParam int expiryMonth, @RequestParam int expiryYear) throws Exception {
-        if (cardNumber.length() != 16) {
-            return ("Card info is not correct");
-        }
-        CardDetail cardDetail = new CardDetail();
-        cardDetail.setCardNumber(cardNumber);
-        cardDetail.setCvv(cvv);
-        cardDetail.setExpiryMonth(expiryMonth);
-        cardDetail.setExpiryYear(expiryYear);
+    // authorize an order payment
+    public String authorizePayment(OrderDetail orderDetail) throws Exception {
+        validateOrderDetail(orderDetail);
 
+        int amount = orderDetail.getAmt() * 100;
+        String orderId = orderDetail.getOrderId();
+        String customerId = orderDetail.getCustomerId();
 
         String id = orderId + amount;
         String idempotencyKey = UUID.nameUUIDFromBytes(id.getBytes()).toString();
@@ -86,33 +59,27 @@ public class GatewayApis {
 
             // populate the payment details and save to db so to save the information before calling bank
             if (paymentRepository.findByPaymentRef(paymentRef) == null) {
-                paymentDetail.setPaymentRef(paymentRef);
-                paymentDetail.setOrderId(orderId);
-                paymentDetail.setCustomerId(customerId);
-                paymentDetail.setAmount(amount);
-                paymentDetail.setCurrentState(State.PENDING);
-                paymentDetail.setCreatedAt(LocalDateTime.now().toString());
-
-                paymentRepository.save(paymentDetail);
+               PaymentDetail paymentDetail = new PaymentDetail();
+               paymentDetail = PaymentMapping.createPaymentDetail(paymentRef, orderId, customerId, amount);
+               paymentRepository.save(paymentDetail);
             }
 
+            int attempts = 0;
             while (attempts < 3) {
                 try {
                     // calling bank api
-                    BankAuthResponse bankResponse = bankClient.postAuthorization(cardDetail, amount, orderId, paymentRef, idempotencyKey);
+                    BankAuthResponse bankResponse = bankClient.postAuthorization(orderDetail, amount, orderId, paymentRef, idempotencyKey);
                     
                     // update payment status
                     paymentRepository.updateAuthorization(paymentRef, bankResponse.getCurrentState(), bankResponse.getCreatedAt());
 
                     String authorizationId = bankResponse.getAuthorizationId();
+                    String note = "Authorization successful";
 
                     // populate payment event so it can be saved for querying
-                    paymentEvent.setBankTransactionId(authorizationId);
-                    paymentEvent.setIdempotencyKey(idempotencyKey.toString());
-                    paymentEvent.setCurrentState(State.valueOf(bankResponse.getCurrentState().toUpperCase()));
-                    paymentEvent.setPaymentRef(paymentRef);
-                    paymentEvent.setTimeCreated(bankResponse.getCreatedAt());
-                    paymentEvent.setNotes("Authorization successful");
+                    PaymentEvent paymentEvent = new PaymentEvent();
+                    paymentEvent = PaymentMapping.createPaymentEvent(authorizationId, idempotencyKey, 
+                        State.valueOf(bankResponse.getCurrentState().toUpperCase()), paymentRef, bankResponse.getCreatedAt(), note);
                     paymentEventRepository.save(paymentEvent);
                     
                     // return confirmation of transaction to ficmart
@@ -141,60 +108,46 @@ public class GatewayApis {
           
     }
 
-    //get auth with id
-    @GetMapping("/getauth")
-    public BankAuthResponse authorize(String paymentRef) throws Exception {
+    // capture authorized payment
+    public String capturePayment(String paymentRef) throws Exception {
+
         String authorizationId = null;
         List<PaymentEvent> eventAssociatedWithRef = paymentEventRepository.findByPaymentRef(paymentRef);
-        for (PaymentEvent event : eventAssociatedWithRef) {
-            authorizationId = event.getBankTransactionId();
-            break;
+        if (eventAssociatedWithRef.isEmpty()) {
+            throw new ResourceNotFound("No payment found for this reference");
         }
-
-        BankAuthResponse bankAuthResponse = bankClient.getAuthorization(authorizationId, paymentRef);
-        return bankAuthResponse;
-    }
-     
-    //send capture request
-    @PostMapping("/capture")
-    public String capture(@RequestParam String paymentRef) throws Exception {
-
-        String authorizationId = null;
-        List<PaymentEvent> eventAssociatedWithRef = paymentEventRepository.findByPaymentRef(paymentRef);
         PaymentEvent lastEvent = eventAssociatedWithRef.get(eventAssociatedWithRef.size() - 1);
-        
+
         if (lastEvent.getCurrentState() == State.APPROVED) {
             authorizationId = lastEvent.getBankTransactionId();
             //break;
         } else {
-            return "This transaction CAN NOT be Captured.";
+            throw new WrongTransactionType("This transaction CAN NOT be Captured.");
         }
-        
 
         int amount = paymentRepository.findByPaymentRef(paymentRef).getAmount();
 
         String id = authorizationId + amount;
-        UUID idempotencyKey = UUID.nameUUIDFromBytes(id.getBytes());
+        String idempotencyKey = UUID.nameUUIDFromBytes(id.getBytes()).toString();
 
-        if (!paymentEventRepository.findByIdemKey(idempotencyKey.toString())) {
+        if (!paymentEventRepository.findByIdemKey(idempotencyKey)) {
 
+            int attempts = 0;
             while (attempts < 3) {
 
                 try {
-                    BankCaptureResponse captureResponse = bankClient.postCapture(amount, authorizationId, paymentRef);
+                    BankCaptureResponse captureResponse = bankClient.postCapture(amount, authorizationId, paymentRef, idempotencyKey);
                 
                     String captureId = captureResponse.getCaptureId();
 
                     // update payment status
                     paymentRepository.updateStatus(paymentRef, State.CAPTURED);
+                    String note = "Capture successful";
 
                     // populate payment event so it can be saved for querying
-                    paymentEvent.setBankTransactionId(captureId);
-                    paymentEvent.setIdempotencyKey(idempotencyKey.toString());
-                    paymentEvent.setCurrentState(State.valueOf(captureResponse.getCurrentState().toUpperCase()));
-                    paymentEvent.setPaymentRef(paymentRef);
-                    paymentEvent.setTimeCreated(captureResponse.getCapturedAt());
-                    paymentEvent.setNotes("Capture successful");
+                    PaymentEvent paymentEvent = new PaymentEvent();
+                    paymentEvent = PaymentMapping.createPaymentEvent(captureId, idempotencyKey.toString(), 
+                        State.valueOf(captureResponse.getCurrentState().toUpperCase()), paymentRef, captureResponse.getCapturedAt(), note);
                     paymentEventRepository.save(paymentEvent);
 
                     String confirmation = "This order has been captured. Capture ID: " + captureId + ".\n Product will be shipped soon!";
@@ -214,56 +167,41 @@ public class GatewayApis {
         return ("This payment has already been captured.");
     }
 
-    // return bank capture response
-    @GetMapping("/getcapture")
-    public BankCaptureResponse getCapture(String paymentRef) throws Exception {
-        String captureId = null;
-        List<PaymentEvent> eventAssociatedWithRef = paymentEventRepository.findByPaymentRef(paymentRef);
-        for (PaymentEvent event : eventAssociatedWithRef) {
-            if (event.getCurrentState() == State.CAPTURED) {
-                captureId = event.getBankTransactionId();
-                break;
-            }
-            break;
-        }
-
-        BankCaptureResponse captureResponse = bankClient.getCapture(captureId, paymentRef);
-        return captureResponse;
-    }
-
-    @PostMapping("/void")
-    public String voids(@RequestParam String paymentRef) throws Exception {
+    // void an authorized payment
+    public String voidPayment(String paymentRef) throws Exception {
 
         String authorizationId = null;
         List<PaymentEvent> eventAssociatedWithRef = paymentEventRepository.findByPaymentRef(paymentRef);
+        if (eventAssociatedWithRef.isEmpty()) {
+            throw new ResourceNotFound("No payment found for this reference");
+        }
         PaymentEvent lastEvent = eventAssociatedWithRef.get(eventAssociatedWithRef.size() - 1);
-        
+
         if (lastEvent.getCurrentState() == State.APPROVED) {
             authorizationId = lastEvent.getBankTransactionId();
             //break;
         } else {
-            return "This transaction CAN NOT be Voided. Please try asking for a refund instead";
+            throw new WrongTransactionType ("This transaction CAN NOT be Voided. Please try asking for a refund instead");
         }
 
-        UUID idempotencyKey = UUID.nameUUIDFromBytes(authorizationId.getBytes());
+        String idempotencyKey = (UUID.nameUUIDFromBytes(authorizationId.getBytes())).toString();
         
-        if (!paymentEventRepository.findByIdemKey(idempotencyKey.toString())) {
+        if (!paymentEventRepository.findByIdemKey(idempotencyKey)) {
 
+            int attempts = 0;
             while (attempts < 3) {
                 try {
             
-                    BankVoidResponse voidResponse = bankClient.postVoid(authorizationId, paymentRef);
+                    BankVoidResponse voidResponse = bankClient.postVoid(authorizationId, paymentRef, idempotencyKey);
                     String voidId = voidResponse.getVoidId();
 
                     paymentRepository.updateStatus(paymentRef, State.VOIDED);
+                    String note = "Void successfully";
                     
                     // populate payment event so it can be saved for querying
-                    paymentEvent.setBankTransactionId(voidId);
-                    paymentEvent.setIdempotencyKey(idempotencyKey.toString());
-                    paymentEvent.setCurrentState(State.valueOf(voidResponse.getCurrentState().toUpperCase()));
-                    paymentEvent.setPaymentRef(paymentRef);
-                    paymentEvent.setTimeCreated(voidResponse.getVoidedAt());
-                    paymentEvent.setNotes("Void successful");
+                    PaymentEvent paymentEvent = new PaymentEvent();
+                    paymentEvent = PaymentMapping.createPaymentEvent(voidId, idempotencyKey, 
+                        State.valueOf(voidResponse.getCurrentState().toUpperCase()), paymentRef, voidResponse.getVoidedAt(), note);
                     paymentEventRepository.save(paymentEvent);
 
                     String confirmation = "This order has been voided. Void ID: " + voidId + "\n Product will not be shipped";
@@ -285,42 +223,46 @@ public class GatewayApis {
         
     }
 
-    @PostMapping("/refund")
+    // refund a captured payment
     public String refund(@RequestParam String paymentRef) throws Exception {
-        
-        int amount = paymentRepository.findByPaymentRef(paymentRef).getAmount();
+
         String captureId = null;
         List<PaymentEvent> eventAssociatedWithRef = paymentEventRepository.findByPaymentRef(paymentRef);
+        if (eventAssociatedWithRef.isEmpty()) {
+            throw new ResourceNotFound("No payment found for this reference");
+        }
         PaymentEvent lastEvent = eventAssociatedWithRef.get(eventAssociatedWithRef.size() - 1);
-        
+
         if (lastEvent.getCurrentState() == State.CAPTURED) {
             captureId = lastEvent.getBankTransactionId();
             //break;
         } else {
-            return "This transaction CAN NOT be Refunded. It was Voided. Void ID: " + lastEvent.getBankTransactionId();
+            throw new WrongTransactionType ("This transaction CAN NOT be Refunded. It was Voided. Void ID: " + lastEvent.getBankTransactionId());
         }
 
-        String id = amount + captureId;
-        UUID idempotencyKey = UUID.nameUUIDFromBytes(id.getBytes());
-        
-        if (!paymentEventRepository.findByIdemKey(idempotencyKey.toString())) {
+        // the payments row is guaranteed to exist here: authorizePayment always creates it
+        // before any event is written, and we've already confirmed an event exists above
+        int amount = paymentRepository.findByPaymentRef(paymentRef).getAmount();
 
+        String id = amount + captureId;
+        String idempotencyKey = (UUID.nameUUIDFromBytes(id.getBytes())).toString();
+        
+        if (!paymentEventRepository.findByIdemKey(idempotencyKey)) {
+
+            int attempts = 0;
             while (attempts < 3) {
                 try {
-                    BankRefundResponse refundResponse = bankClient.postRefund(amount, captureId, paymentRef);
+                    BankRefundResponse refundResponse = bankClient.postRefund(amount, captureId, paymentRef, idempotencyKey);
                     String refundId = refundResponse.getRefundId();
 
                     paymentRepository.updateStatus(paymentRef, State.REFUNDED);
+                    String note = "Refund completed";
                     
                     // populate payment event so it can be saved for querying
-                    paymentEvent.setBankTransactionId(refundId);
-                    paymentEvent.setIdempotencyKey(idempotencyKey.toString());
-                    paymentEvent.setCurrentState(State.valueOf(refundResponse.getCurrentState().toUpperCase()));
-                    paymentEvent.setPaymentRef(paymentRef);
-                    paymentEvent.setTimeCreated(refundResponse.getRefundedAt());
-                    paymentEvent.setNotes("Refund successful");
+                    PaymentEvent paymentEvent = new PaymentEvent();
+                    paymentEvent = PaymentMapping.createPaymentEvent(refundId, idempotencyKey, 
+                        State.valueOf(refundResponse.getCurrentState().toUpperCase()), paymentRef, refundResponse.getRefundedAt(), note);
                     paymentEventRepository.save(paymentEvent);
-
                     String confirmation = "This payment has been refunded. Refund ID: " + refundId + "\n Product will not be shipped";
                     return confirmation;
 
@@ -340,46 +282,44 @@ public class GatewayApis {
         
     }
 
-    @GetMapping("/getrefund")
-    public BankRefundResponse getRefund(String paymentRef) throws Exception {
-        String refundId = null;
+    // return bank transaction id for different state of txns using payment ref
+    public String getBankTransactionId(String paymentRef, State status) throws Exception {
+        String bankTransactionId = null;
         List<PaymentEvent> eventAssociatedWithRef = paymentEventRepository.findByPaymentRef(paymentRef);
         for (PaymentEvent event : eventAssociatedWithRef) {
-            if (event.getCurrentState() == State.CAPTURED) {
-                refundId = event.getBankTransactionId();
+            if (event.getCurrentState().equals(status)) {
+                bankTransactionId = event.getBankTransactionId();
                 break;
             }
-            break;
+        }
+        if (bankTransactionId == null) {
+            throw new ResourceNotFound("No " + status + " transaction found for this payment reference");
+        }
+        return bankTransactionId;
+    }
+
+    // validate order/card details before authorizing with the bank
+    private void validateOrderDetail(OrderDetail orderDetail) {
+        String cardNumber = orderDetail.getCardNumber();
+        if (cardNumber == null || !cardNumber.matches("\\d{16}")) {
+            throw new WrongCardDetail("Check card detail");
         }
 
-        BankRefundResponse refundResponse = bankClient.getRefund(refundId, paymentRef);
-        return refundResponse;
-    }
+        String cvv = orderDetail.getCvv();
+        if (cvv == null || !cvv.matches("\\d{3,4}")) {
+            throw new WrongCardDetail("Check card detail");
+        }
 
-    @PostMapping("/receipts")
-    public String receipts(@RequestParam String orderId) throws SQLException {
-        try {
-            String orderReceipt = receipt.createReceipt(orderId);
+        if (orderDetail.getExpiryMonth() < 1 || orderDetail.getExpiryMonth() > 12) {
+            throw new WrongCardDetail("Check card detail");
+        }
 
-            return orderReceipt;
-
-        } catch (Exception e) {
-            throw e;
+        if (orderDetail.getAmt() <= 0) {
+            throw new InvalidOrderDetail("Amount must be greater than zero");
         }
     }
 
-    @GetMapping("/orders")
-    public PaymentDetail getOrdersByCustomerId(@RequestParam String customerId) throws SQLException {
-        return paymentRepository.findByCustomerId(customerId);
-    }
-
-    @GetMapping("/status")
-    public PaymentDetail getOrderStatus(@RequestParam String orderId) throws SQLException {
-        return paymentRepository.findByOrderId(orderId);
-    }
-
-
-    // method to generate a payment key using hash
+    // generate paymentref using hash
     public String generatePaymentRef(String orderId, String customerId) throws NoSuchAlgorithmException {
         String placeHolder = "placeholder";
         String raw = placeHolder + orderId + customerId;
@@ -390,5 +330,4 @@ public class GatewayApis {
         // we take first 16 chars to keep it short
         return "pay_" + HexFormat.of().formatHex(hash).substring(0, 18);
     }
-
 }

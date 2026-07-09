@@ -1,24 +1,32 @@
 package com.gateway.models;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
-public class CardDetail {
-    @JsonProperty("card_number")
+public class OrderDetail {
+    private int amt;
+    private String orderId;
+    private String customerId;
     private String cardNumber;
-    
-    @JsonProperty("expiry_month")
+    private String cvv;
     private int expiryMonth;
-    
-    @JsonProperty("expiry_year")
     private int expiryYear;
     
-    @JsonProperty("cvv")
-    private String cvv;
-
-
-    public CardDetail() {
+    public int getAmt() {
+        return amt;
     }
-    
+    public void setAmt(int amt) {
+        this.amt = amt;
+    }
+    public String getOrderId() {
+        return orderId;
+    }
+    public void setOrderId(String orderId) {
+        this.orderId = orderId;
+    }
+    public String getCustomerId() {
+        return customerId;
+    }
+    public void setCustomerId(String customerId) {
+        this.customerId = customerId;
+    }
     public String getCardNumber() {
         return cardNumber;
     }
@@ -43,5 +51,6 @@ public class CardDetail {
     public void setExpiryYear(int expiryYear) {
         this.expiryYear = expiryYear;
     }
+
 
 }

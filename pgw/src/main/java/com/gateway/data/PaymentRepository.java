@@ -132,48 +132,8 @@ public class PaymentRepository {
             }
         }
     }
-    
-    /*public void updateCapture(String paymentRef, String captureId, String capturedAt) throws SQLException {
-        String sql = "UPDATE payments SET captureId = ?, capturedAt = ? WHERE paymentRef = ?";
 
-        try (Connection connection = dataSource.getConnection();
-            PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.setString(1, captureId);
-                statement.setString(2, capturedAt);
-                statement.setString(3, paymentRef);
-
-                statement.executeUpdate();
-            }
-    }
-
-    public void updateVoid(String paymentRef, String voidId, String voidedAt) throws SQLException {
-        String sql = "UPDATE payments SET voidId = ?, voidedAt = ? WHERE paymentRef = ?";
-
-        try (Connection connection = dataSource.getConnection();
-            PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.setString(1, voidId);
-                statement.setString(3, paymentRef);
-                statement.setString(2, voidedAt);
-
-                statement.executeUpdate();
-            }
-    }
-
-    public void updateRefund(String paymentRef, String refundId, String refundedAt) throws SQLException {
-        String sql = "UPDATE payments SET refundId = ?, refundedAt = ? WHERE paymentRef = ?";
-
-        try (Connection connection = dataSource.getConnection();
-            PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.setString(1, refundId);
-                statement.setString(3, paymentRef);
-                statement.setString(2, refundedAt);
-
-                statement.executeUpdate();
-            }
-    }*/
-
-
-    // updates the status of the payment depending on the stage the payment is 
+    // updates the status of the payment depending on the stage the payment is
     public void updateStatus(String paymentRef, State currentState) throws SQLException {
         String sql = "UPDATE payments SET currentState = ? WHERE paymentRef = ?";
 

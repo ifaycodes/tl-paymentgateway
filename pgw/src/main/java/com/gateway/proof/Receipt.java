@@ -1,10 +1,8 @@
 package com.gateway.proof;
 
 import java.sql.SQLException;
-import java.time.LocalDateTime;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.gateway.data.PaymentEventRepository;
@@ -13,28 +11,14 @@ import com.gateway.models.PaymentDetail;
 import com.gateway.models.PaymentEvent;
 import com.gateway.state.State;
 
-import javax.sql.DataSource;
-
 @Service
 public class Receipt {
-    public String orderId;
-    public String customerId;
-    public int amount;
-    public String currency = "USD";
-    private State currentState; //(authorized, captured, voided, refunded)
-    public String paymentRef;
-    public int bankRefId;
-    public LocalDateTime timeStamp;
 
-    @Autowired
-    private PaymentRepository paymentRepository;
-
-    @Autowired
-    private PaymentEventRepository paymentEventRepository;
-    
+    private final PaymentRepository paymentRepository;
+    private final PaymentEventRepository paymentEventRepository;
 
     //constructor
-    public Receipt(DataSource dataSource, PaymentRepository paymentRepository, PaymentEventRepository paymentEventRepository) {
+    public Receipt(PaymentRepository paymentRepository, PaymentEventRepository paymentEventRepository) {
             this.paymentRepository = paymentRepository;
             this.paymentEventRepository = paymentEventRepository;
         }
@@ -42,10 +26,10 @@ public class Receipt {
     //creating a receipt
     public String createReceipt(String orderId) throws SQLException {
         PaymentDetail order = paymentRepository.findByOrderId(orderId);
-        currentState = order.getCurrentState();
-        customerId = order.getCustomerId();
-        amount = order.getAmount();
-        paymentRef = order.getPaymentRef();
+        State currentState = order.getCurrentState();
+        String customerId = order.getCustomerId();
+        double amount = order.getAmount() / 100.0;
+        String paymentRef = order.getPaymentRef();
 
         List<PaymentEvent> paymentEvent = paymentEventRepository.findByPaymentRef(paymentRef);
 
@@ -57,10 +41,10 @@ public class Receipt {
 
         for (PaymentEvent event : paymentEvent) {
             switch (event.getCurrentState()) {
-                case APPROVED -> receipt.append("Authorization ID: " + event.getBankTransactionId() + ", authorized at: " + event.getTimeCreated().substring(0, 20) + "\n");
-                case CAPTURED -> receipt.append("Capture ID: " + event.getBankTransactionId() + ", captured at: " + event.getTimeCreated().substring(0, 20) + "\n");
-                case VOIDED ->  receipt.append("Voided ID: " + event.getBankTransactionId() + ", captured at: " + event.getTimeCreated().substring(0, 19) + "\n");
-                case REFUNDED -> receipt.append("Refund ID: " + event.getBankTransactionId() + ", refunded at: " + event.getTimeCreated().substring(0, 19) + "\n");
+                case APPROVED -> receipt.append("Authorization ID: " + event.getBankTransactionId() + ", authorized at: " + truncateTimestamp(event.getTimeCreated(), 20) + "\n");
+                case CAPTURED -> receipt.append("Capture ID: " + event.getBankTransactionId() + ", captured at: " + truncateTimestamp(event.getTimeCreated(), 20) + "\n");
+                case VOIDED ->  receipt.append("Voided ID: " + event.getBankTransactionId() + ", captured at: " + truncateTimestamp(event.getTimeCreated(), 19) + "\n");
+                case REFUNDED -> receipt.append("Refund ID: " + event.getBankTransactionId() + ", refunded at: " + truncateTimestamp(event.getTimeCreated(), 19) + "\n");
                 case FAILED -> receipt.append("This payment failed. Reason: " + event.getNotes());
                 default -> receipt.append("This payment is still pending");
             }
@@ -69,7 +53,11 @@ public class Receipt {
         return receipt.toString();
     }
 
-    public void setCurrentState(State currentState) {
-        this.currentState = currentState;
+    
+    private String truncateTimestamp(String timestamp, int maxLen) {
+        if (timestamp == null) {
+            return "";
+        }
+        return timestamp.length() > maxLen ? timestamp.substring(0, maxLen) : timestamp;
     }
 }
